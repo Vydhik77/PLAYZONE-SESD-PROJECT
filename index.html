@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlayZone – Gaming Cafe & Console Lounge Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .tab-active { border-bottom: 2px solid #2563eb; color: #1d4ed8; font-weight: 600; }
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- TOP NAVBAR -->
+  <header id="navbar" class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="showView('landing')">
+        <div class="w-9 h-9 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-lg shadow-sm">PZ</div>
+        <div>
+          <span class="font-bold text-lg text-blue-900 tracking-tight">PlayZone</span>
+          <span class="hidden sm:inline text-xs text-slate-500 ml-2 border-l border-slate-300 pl-2">Gaming Cafe & Console Lounge</span>
+        </div>
+      </div>
+
+      <nav id="mainNav" class="hidden md:flex items-center gap-6 text-sm text-slate-600">
+        <button onclick="showView('dashboard')" id="nav-dashboard" class="py-5 hover:text-blue-700 transition">Home</button>
+        <button onclick="showView('stations')" id="nav-stations" class="py-5 hover:text-blue-700 transition">Stations</button>
+        <button onclick="showView('desk')" id="nav-desk" class="py-5 hover:text-blue-700 transition">Live Timers & Billing</button>
+        <button onclick="showView('maintenance')" id="nav-maintenance" class="py-5 hover:text-blue-700 transition">Approvals & Repairs</button>
+        <button onclick="showView('admin')" id="nav-admin" class="py-5 hover:text-blue-700 transition">Admin Console</button>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <div id="roleBadge" class="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="currentUserName" class="font-semibold text-slate-800">M Vydhik</span>
+          <span id="currentUserRole" class="text-slate-500">(Cafe Manager)</span>
+        </div>
+        <button onclick="showView('landing')" id="logoutBtn" class="hidden text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700">Switch Role</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+
+    <!-- 1. LANDING / LOGIN + PUBLIC QR VERIFICATION -->
+    <section id="view-landing" class="grid lg:grid-cols-12 gap-10 items-center py-6">
+      <div class="lg:col-span-7 space-y-6">
+        <span class="inline-block text-xs font-semibold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+          SR University • SESD Course Project
+        </span>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900 leading-tight">
+          Gaming stations, live timers, and verified billing in one place.
+        </h1>
+        <p class="text-slate-600 text-lg max-w-2xl">
+          Book high-refresh-rate RTX PCs, PS5 lounges, and Racing Sim rigs in one tap. Desk staff track live countdowns and cafe orders, technicians log hardware repairs, and managers approve budgets with full audit trails.
+        </p>
+        <div class="grid sm:grid-cols-3 gap-4 pt-2">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-blue-700 font-bold text-sm mb-1">PC, PS5 & Sim Zones</div>
+            <p class="text-xs text-slate-500">Live availability across 8 gaming rigs with installed game lists and hourly rates.</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-blue-700 font-bold text-sm mb-1">Smart Timers & Billing</div>
+            <p class="text-xs text-slate-500">Automated countdowns, snack add-ons, and instant QR-verified PDF invoices.</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-blue-700 font-bold text-sm mb-1">3-Stage Repair Workflow</div>
+            <p class="text-xs text-slate-500">Desk flags faulty gear → Tech estimates cost → Manager approves repair budget.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-5 space-y-5">
+        <!-- Login Card -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-xl font-bold text-slate-900">Sign in to PlayZone</h2>
+          <p class="text-xs text-slate-500">Select a demo role to explore role-based dashboards instantly.</p>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button onclick="loginAs('M Vydhik', 'Cafe Manager', 'dashboard')" class="p-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-left transition">
+              <div class="font-semibold text-sm">Cafe Manager</div>
+              <div class="text-[11px] text-blue-100">Full admin & approvals</div>
+            </button>
+            <button onclick="loginAs('Arjun B', 'Desk Operator', 'desk')" class="p-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-left transition">
+              <div class="font-semibold text-sm">Desk Operator</div>
+              <div class="text-[11px] text-slate-300">Live timers & billing</div>
+            </button>
+            <button onclick="loginAs('Karthik R', 'Gamer (Gold)', 'stations')" class="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-left border border-slate-200 transition">
+              <div class="font-semibold text-sm">Gamer</div>
+              <div class="text-[11px] text-slate-500">Book slots & snacks</div>
+            </button>
+            <button onclick="loginAs('Akash K', 'Hardware Tech', 'maintenance')" class="p-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-left border border-slate-200 transition">
+              <div class="font-semibold text-sm">Hardware Tech</div>
+              <div class="text-[11px] text-slate-500">Diagnostics & repairs</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Public QR Invoice Verification -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <div class="flex items-center gap-2 font-semibold text-slate-900 text-sm">
+            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">✓</span>
+            Verify a PlayZone Invoice / Pass
+          </div>
+          <p class="text-xs text-slate-500">Enter an Invoice ID (try <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-800">PZ-2026-1042</code>) to verify authenticity without signing in.</p>
+          <div class="flex gap-2">
+            <input id="verifyInput" type="text" placeholder="Enter Invoice ID (e.g. PZ-2026-1042)" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+            <button onclick="verifyInvoice()" class="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800">Verify</button>
+          </div>
+          <div id="verifyResult" class="hidden text-xs p-3 rounded-lg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. DASHBOARD HOME -->
+    <section id="view-dashboard" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Welcome back to PlayZone</p>
+          <h1 class="text-3xl font-extrabold text-slate-900">Hi, <span id="dashName">M Vydhik</span></h1>
+          <p class="text-sm text-slate-500">Monitor live gaming rigs, manage bookings, and track lounge revenue in real time.</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="showView('desk')" class="px-4 py-2 text-sm font-medium bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Open Live Timers</button>
+          <button onclick="showView('stations')" class="px-4 py-2 text-sm font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800">Explore Stations (8) →</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">Available Stations</div>
+          <div id="kpiAvailable" class="text-2xl font-bold text-emerald-600 mt-1">4 / 8</div>
+          <div class="text-xs text-slate-400 mt-1">PC, PS5, Sim & VR Zones</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">Active Live Sessions</div>
+          <div id="kpiOccupied" class="text-2xl font-bold text-blue-700 mt-1">3</div>
+          <div class="text-xs text-slate-400 mt-1">Countdowns running live</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">Pending Repair Approvals</div>
+          <div id="kpiRepairs" class="text-2xl font-bold text-amber-600 mt-1">2</div>
+          <div class="text-xs text-slate-400 mt-1">Awaiting Manager review</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="text-xs text-slate-500 font-medium">Today's Revenue</div>
+          <div id="kpiRevenue" class="text-2xl font-bold text-slate-900 mt-1">₹6,450</div>
+          <div class="text-xs text-emerald-600 mt-1">+18% vs yesterday</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-slate-900">Active Sessions Snapshot</h3>
+            <button onclick="showView('desk')" class="text-xs text-blue-700 font-medium hover:underline">Manage timers →</button>
+          </div>
+          <div id="dashSessionsList" class="space-y-3"></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-slate-900">Lounge Announcements & Peak Alerts</h3>
+            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Live</span>
+          </div>
+          <div class="space-y-3 text-sm">
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div class="font-semibold text-slate-800">Weekend Cricket 26 & FC 26 Cup</div>
+              <p class="text-xs text-slate-500 mt-0.5">PS5 Lounge bays 1 & 2 reserved Saturday 4 PM – 8 PM. Walk-in PC slots open.</p>
+            </div>
+            <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+              <div class="font-semibold text-amber-900">Maintenance Alert: PS5-02 DualSense</div>
+              <p class="text-xs text-amber-700 mt-0.5">Left analog stick drift reported. Ticket #MT-204 awaiting Manager budget sign-off.</p>
+            </div>
+            <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+              <div class="font-semibold text-emerald-900">Happy Hour Pricing (12 PM – 3 PM)</div>
+              <p class="text-xs text-emerald-700 mt-0.5">20% off on High-End RTX PC Zone for Gold Tier Members.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. STATIONS DIRECTORY & BOOKING -->
+    <section id="view-stations" class="hidden space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">PlayZone Station Directory</h1>
+          <p class="text-sm text-slate-500">Browse live PC, Console, Racing Sim, and VR rigs and reserve your time slot.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="filterStations('All')" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-700 text-white">All</button>
+          <button onclick="filterStations('PC Zone')" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700">PC Zone</button>
+          <button onclick="filterStations('PS5 Lounge')" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700">PS5 Lounge</button>
+          <button onclick="filterStations('Racing Sim')" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700">Racing Sim</button>
+          <button onclick="filterStations('VR Booth')" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700">VR Booth</button>
+        </div>
+      </div>
+      <div id="stationsGrid" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    </section>
+
+    <!-- 4. DESK OPERATOR: LIVE TIMERS & BILLING -->
+    <section id="view-desk" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Desk Operator – Live Timers & Billing</h1>
+          <p class="text-sm text-slate-500">Monitor active station countdowns, attach snack orders, and issue QR-verified PDF invoices.</p>
+        </div>
+        <button onclick="openReportIssueModal()" class="px-4 py-2 text-sm font-medium bg-rose-600 text-white rounded-lg hover:bg-rose-700">+ Flag Faulty Hardware</button>
+      </div>
+      <div id="liveTimersGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </section>
+
+    <!-- 5. HARDWARE MAINTENANCE & 3-STAGE APPROVALS -->
+    <section id="view-maintenance" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Hardware Maintenance & Budget Approvals</h1>
+          <p class="text-sm text-slate-500">3-Stage Pipeline: Desk Operator Report → Hardware Tech Estimate → Cafe Manager Approval.</p>
+        </div>
+        <div class="flex gap-2 text-xs">
+          <span class="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 font-semibold">Pending Approval</span>
+          <span class="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Approved / Fixed</span>
+        </div>
+      </div>
+      <div id="ticketsList" class="space-y-4"></div>
+    </section>
+
+    <!-- 6. CAFE MANAGER ADMIN CONSOLE -->
+    <section id="view-admin" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Cafe Manager Admin Console</h1>
+          <p class="text-sm text-slate-500">Manage gaming stations, hourly rates, staff roles, verified invoices, and system audit logs.</p>
+        </div>
+        <button onclick="addDemoStation()" class="px-4 py-2 text-sm font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800">+ Add New Station</button>
+      </div>
+
+      <div class="grid lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-200 font-bold text-slate-900 text-sm">Registered Gaming Stations & Rates</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-500 uppercase">
+                <tr>
+                  <th class="px-4 py-3">Station</th>
+                  <th class="px-4 py-3">Zone</th>
+                  <th class="px-4 py-3">Rate/Hr</th>
+                  <th class="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody id="adminStationsTable" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-200 font-bold text-slate-900 text-sm">System Audit Log</div>
+          <div id="auditLogList" class="divide-y divide-slate-100 max-h-80 overflow-y-auto text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOOKING MODAL -->
+  <div id="bookingModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-900" id="bookModalTitle">Book Station</h3>
+        <button onclick="closeModal('bookingModal')" class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
+      </div>
+      <div class="space-y-3 text-sm">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Gamer Name</label>
+          <input id="bookGamerName" type="text" value="M Vydhik" class="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Duration (Hours)</label>
+            <select id="bookDuration" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+              <option value="1">1 Hour</option>
+              <option value="2" selected>2 Hours</option>
+              <option value="3">3 Hours</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Start Slot</label>
+            <input type="text" value="Immediate / Walk-In" readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-500" />
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeModal('bookingModal')" class="px-4 py-2 text-sm border border-slate-300 rounded-lg">Cancel</button>
+        <button onclick="confirmBooking()" class="px-4 py-2 text-sm bg-blue-700 text-white font-medium rounded-lg hover:bg-blue-800">Confirm & Start Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVOICE MODAL -->
+  <div id="invoiceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-slate-200">
+      <div class="flex justify-between items-start border-b border-slate-200 pb-3">
+        <div>
+          <div class="font-extrabold text-blue-800 text-lg">PlayZone Digital Invoice</div>
+          <div id="invCode" class="text-xs font-mono text-slate-500">PZ-2026-1043</div>
+        </div>
+        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">PAID & VERIFIED</span>
+      </div>
+      <div id="invDetails" class="text-sm space-y-2"></div>
+      <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="text-xs text-slate-500">
+          <div class="font-semibold text-slate-800">QR Verification Ready</div>
+          <div>Scan or enter code on PlayZone portal to validate receipt.</div>
+        </div>
+        <div class="w-16 h-16 bg-slate-900 text-white flex items-center justify-center rounded-lg font-mono text-[10px] text-center p-1">
+          QR CODE<br/>VERIFIED
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 no-print">
+        <button onclick="closeModal('invoiceModal')" class="px-4 py-2 text-sm border border-slate-300 rounded-lg">Close</button>
+        <button onclick="window.print()" class="px-4 py-2 text-sm bg-blue-700 text-white font-medium rounded-lg hover:bg-blue-800">Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+    PlayZone – Gaming Cafe & Console Lounge Manager • Designed & Developed by M Vydhik (2403A54012) • SR University
+  </footer>
+
+  <script>
+    let stations = [
+      { id: 'PC-01', name: 'RTX Rig 01', zone: 'PC Zone', specs: 'RTX 4070 • i7-14700K • 240Hz', rate: 150, status: 'Occupied', games: ['Valorant', 'CS2', 'GTA V'] },
+      { id: 'PC-02', name: 'RTX Rig 02', zone: 'PC Zone', specs: 'RTX 4070 • i7-14700K • 240Hz', rate: 150, status: 'Available', games: ['Valorant', 'Apex Legends', 'Forza Horizon 6'] },
+      { id: 'PC-03', name: 'RTX Rig 03', zone: 'PC Zone', specs: 'RTX 4060 Ti • 32GB RAM • 165Hz', rate: 120, status: 'Available', games: ['Cricket 26', 'PUBG PC', 'GTA V'] },
+      { id: 'PS5-01', name: 'PS5 VIP Bay 1', zone: 'PS5 Lounge', specs: 'PS5 • 65" 4K 120Hz OLED • 4 DualSense', rate: 250, status: 'Occupied', games: ['FC 26', 'Cricket 26', 'Spider-Man 2'] },
+      { id: 'PS5-02', name: 'PS5 VIP Bay 2', zone: 'PS5 Lounge', specs: 'PS5 • 55" 4K TV • 2 DualSense', rate: 220, status: 'Maintenance', games: ['FC 26', 'Mortal Kombat 1', 'God of War'] },
+      { id: 'PS5-03', name: 'PS5 Cozy Bay 3', zone: 'PS5 Lounge', specs: 'PS5 • 55" 4K TV • 2 DualSense', rate: 220, status: 'Available', games: ['Cricket 26', 'Tekken 8', 'GTA V'] },
+      { id: 'SIM-01', name: 'F1 Racing Sim 01', zone: 'Racing Sim', specs: 'Logitech G923 Wheel + Bucket Seat', rate: 300, status: 'Occupied', games: ['Forza Horizon 6', 'F1 25', 'Assetto Corsa'] },
+      { id: 'VR-01', name: 'VR Arena Booth', zone: 'VR Booth', specs: 'Meta Quest 3 • Full Room-Scale', rate: 350, status: 'Available', games: ['Beat Saber', 'Half-Life: Alyx'] }
+    ];
+
+    let sessions = [
+      { id: 'SES-101', stationId: 'PC-01', gamer: 'Rohan Reddy', rate: 150, remainingSec: 4120, hours: 2, foodCost: 120, foodItems: ['Cold Coffee', 'Nachos'] },
+      { id: 'SES-102', stationId: 'PS5-01', gamer: 'Karthik & Squad', rate: 250, remainingSec: 2650, hours: 2, foodCost: 240, foodItems: ['2x Red Bull', 'Peri-Peri Fries'] },
+      { id: 'SES-103', stationId: 'SIM-01', gamer: 'Arjun B', rate: 300, remainingSec: 1740, hours: 1, foodCost: 0, foodItems: [] }
+    ];
+
+    let tickets = [
+      { id: 'MT-204', stationId: 'PS5-02', issue: 'DualSense Controller #2 severe left stick drift', reportedBy: 'Arjun B (Desk)', techNotes: 'Needs Hall-Effect joystick module replacement', cost: 1450, status: 'Pending Manager Approval' },
+      { id: 'MT-205', stationId: 'PC-03', issue: 'HyperX Headset microphone static noise', reportedBy: 'Arjun B (Desk)', techNotes: 'Detachable boom mic replacement required', cost: 850, status: 'Pending Manager Approval' },
+      { id: 'MT-201', stationId: 'SIM-01', issue: 'Brake pedal calibration drift', reportedBy: 'Arjun B (Desk)', techNotes: 'Potentiometer cleaned & recalibrated', cost: 400, status: 'Approved & Completed' }
+    ];
+
+    let invoices = {
+      'PZ-2026-1042': { gamer: 'M Vydhik', station: 'PS5 VIP Bay 1', total: 620, date: '25 Nov 2026', status: 'VALID' }
+    };
+
+    let auditLogs = [
+      { time: '15:42', actor: 'Arjun B (Desk)', action: 'Started Session SES-103 on SIM-01 (1 Hr)' },
+      { time: '15:10', actor: 'Akash K (Tech)', action: 'Submitted ₹1,450 repair estimate for Ticket MT-204' },
+      { time: '14:35', actor: 'M Vydhik (Manager)', action: 'Approved repair budget ₹400 for Ticket MT-201' },
+      { time: '13:50', actor: 'Arjun B (Desk)', action: 'Issued QR Invoice PZ-2026-1042 (₹620)' }
+    ];
+
+    let currentFilter = 'All';
+    let selectedStationId = null;
+    let totalRevenue = 6450;
+
+    function showView(view) {
+      ['landing', 'dashboard', 'stations', 'desk', 'maintenance', 'admin'].forEach(v => {
+        document.getElementById('view-' + v).classList.add('hidden');
+        const nav = document.getElementById('nav-' + v);
+        if (nav) nav.classList.remove('tab-active');
+      });
+      document.getElementById('view-' + view).classList.remove('hidden');
+      const activeNav = document.getElementById('nav-' + view);
+      if (activeNav) activeNav.classList.add('tab-active');
+
+      const isLanding = (view === 'landing');
+      document.getElementById('mainNav').classList.toggle('hidden', isLanding);
+      document.getElementById('logoutBtn').classList.toggle('hidden', isLanding);
+      renderAll();
+    }
+
+    function loginAs(name, role, targetView) {
+      document.getElementById('currentUserName').textContent = name;
+      document.getElementById('currentUserRole').textContent = `(${role})`;
+      document.getElementById('dashName').textContent = name;
+      showView(targetView);
+    }
+
+    function verifyInvoice() {
+      const code = document.getElementById('verifyInput').value.trim().toUpperCase();
+      const box = document.getElementById('verifyResult');
+      box.classList.remove('hidden');
+      if (invoices[code]) {
+        const inv = invoices[code];
+        box.className = 'text-xs p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900';
+        box.innerHTML = `<strong>✓ VALID INVOICE (${code})</strong><br/>Gamer: ${inv.gamer} • Station: ${inv.station} • Total: ₹${inv.total} • Date: ${inv.date}`;
+      } else {
+        box.className = 'text-xs p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800';
+        box.innerHTML = `<strong>✕ Not Found:</strong> No verified PlayZone invoice matches "${code}". Try <code>PZ-2026-1042</code>.`;
+      }
+    }
+
+    function filterStations(zone) {
+      currentFilter = zone;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        if (b.textContent === zone) {
+          b.className = 'filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-700 text-white';
+        } else {
+          b.className = 'filter-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700';
+        }
+      });
+      renderStations();
+    }
+
+    function openBookModal(stationId) {
+      selectedStationId = stationId;
+      const st = stations.find(s => s.id === stationId);
+      document.getElementById('bookModalTitle').textContent = `Book ${st.name} (₹${st.rate}/hr)`;
+      document.getElementById('bookingModal').classList.remove('hidden');
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function confirmBooking() {
+      const gamer = document.getElementById('bookGamerName').value || 'Walk-in Gamer';
+      const hrs = parseInt(document.getElementById('bookDuration').value, 10);
+      const st = stations.find(s => s.id === selectedStationId);
+      st.status = 'Occupied';
+      sessions.push({
+        id: 'SES-' + (100 + sessions.length + 1),
+        stationId: st.id,
+        gamer,
+        rate: st.rate,
+        remainingSec: hrs * 3600,
+        hours: hrs,
+        foodCost: 0,
+        foodItems: []
+      });
+      auditLogs.unshift({ time: 'Just now', actor: gamer, action: `Booked ${st.id} for ${hrs} Hr(s)` });
+      closeModal('bookingModal');
+      showView('desk');
+    }
+
+    function addSnack(sessionId) {
+      const s = sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      s.foodCost += 120;
+      s.foodItems.push('Cold Coffee + Fries (₹120)');
+      auditLogs.unshift({ time: 'Just now', actor: 'Desk Operator', action: `Added cafe combo (₹120) to ${s.stationId}` });
+      renderAll();
+    }
+
+    function extendTime(sessionId) {
+      const s = sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      s.remainingSec += 1800;
+      s.hours += 0.5;
+      renderAll();
+    }
+
+    function checkoutSession(sessionId) {
+      const idx = sessions.findIndex(x => x.id === sessionId);
+      if (idx === -1) return;
+      const s = sessions[idx];
+      const st = stations.find(x => x.id === s.stationId);
+      const stationFee = Math.round(s.rate * s.hours);
+      const total = stationFee + s.foodCost;
+      const code = 'PZ-2026-' + Math.floor(1050 + Math.random() * 8900);
+
+      invoices[code] = { gamer: s.gamer, station: st.name, total, date: '25 Nov 2026', status: 'VALID' };
+      totalRevenue += total;
+      st.status = 'Available';
+      sessions.splice(idx, 1);
+      auditLogs.unshift({ time: 'Just now', actor: 'Desk Operator', action: `Closed ${st.id} & issued Invoice ${code} (₹${total})` });
+
+      document.getElementById('invCode').textContent = code;
+      document.getElementById('invDetails').innerHTML = `
+        <div class="flex justify-between"><span class="text-slate-500">Gamer:</span><span class="font-semibold">${s.gamer}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Station:</span><span class="font-semibold">${st.name} (${s.hours} hrs)</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Station Charge:</span><span>₹${stationFee}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Cafe / Snacks:</span><span>₹${s.foodCost}</span></div>
+        <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900"><span>Grand Total:</span><span>₹${total}</span></div>
+      `;
+      document.getElementById('invoiceModal').classList.remove('hidden');
+      renderAll();
+    }
+
+    function approveTicket(id, approve) {
+      const t = tickets.find(x => x.id === id);
+      if (!t) return;
+      t.status = approve ? 'Approved & Completed' : 'Rejected';
+      if (approve) {
+        const st = stations.find(s => s.id === t.stationId);
+        if (st) st.status = 'Available';
+      }
+      auditLogs.unshift({ time: 'Just now', actor: 'M Vydhik (Manager)', action: `${approve ? 'Approved' : 'Rejected'} repair ticket ${t.id} (₹${t.cost})` });
+      renderAll();
+    }
+
+    function openReportIssueModal() {
+      const avail = stations.find(s => s.status === 'Available');
+      if (!avail) return alert('All available stations are currently occupied.');
+      avail.status = 'Maintenance';
+      const newId = 'MT-' + (206 + tickets.length);
+      tickets.unshift({
+        id: newId,
+        stationId: avail.id,
+        issue: 'Monitor HDMI flicker / peripheral disconnect',
+        reportedBy: 'Desk Operator',
+        techNotes: 'Replacement DisplayPort cable & port check',
+        cost: 650,
+        status: 'Pending Manager Approval'
+      });
+      auditLogs.unshift({ time: 'Just now', actor: 'Desk Operator', action: `Flagged ${avail.id} for maintenance (${newId})` });
+      showView('maintenance');
+    }
+
+    function addDemoStation() {
+      const num = stations.length + 1;
+      stations.push({
+        id: 'PC-0' + num, name: 'RTX Rig 0' + num, zone: 'PC Zone',
+        specs: 'RTX 4070 Super • 240Hz OLED', rate: 160, status: 'Available',
+        games: ['Valorant', 'Forza Horizon 6', 'Cricket 26']
+      });
+      auditLogs.unshift({ time: 'Just now', actor: 'M Vydhik (Manager)', action: `Added new station PC-0${num} to directory` });
+      renderAll();
+    }
+
+    function fmtTime(sec) {
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function renderStations() {
+      const grid = document.getElementById('stationsGrid');
+      const list = currentFilter === 'All' ? stations : stations.filter(s => s.zone === currentFilter);
+      grid.innerHTML = list.map(s => {
+        const badge = s.status === 'Available' ? 'bg-emerald-100 text-emerald-800'
+                    : s.status === 'Occupied' ? 'bg-blue-100 text-blue-800'
+                    : 'bg-amber-100 text-amber-800';
+        return `
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs font-mono text-slate-400">${s.id}</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badge}">${s.status}</span>
+              </div>
+              <h3 class="font-bold text-slate-900">${s.name}</h3>
+              <p class="text-xs text-slate-500 mt-1">${s.specs}</p>
+              <div class="flex flex-wrap gap-1 mt-3">
+                ${s.games.map(g => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${g}</span>`).join('')}
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div class="font-bold text-slate-900 text-sm">₹${s.rate}<span class="text-xs font-normal text-slate-400">/hr</span></div>
+              ${s.status === 'Available'
+                ? `<button onclick="openBookModal('${s.id}')" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-medium rounded-lg">Book Slot</button>`
+                : `<span class="text-xs text-slate-400">${s.status}</span>`}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderAll() {
+      const availCount = stations.filter(s => s.status === 'Available').length;
+      const pendingCount = tickets.filter(t => t.status === 'Pending Manager Approval').length;
+      document.getElementById('kpiAvailable').textContent = `${availCount} / ${stations.length}`;
+      document.getElementById('kpiOccupied').textContent = sessions.length;
+      document.getElementById('kpiRepairs').textContent = pendingCount;
+      document.getElementById('kpiRevenue').textContent = `₹${totalRevenue.toLocaleString('en-IN')}`;
+
+      document.getElementById('dashSessionsList').innerHTML = sessions.map(s => `
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs">
+          <div>
+            <div class="font-bold text-slate-900">${s.stationId} • ${s.gamer}</div>
+            <div class="text-slate-500">Cafe Add-ons: ₹${s.foodCost}</div>
+          </div>
+          <div class="font-mono font-bold text-blue-700 text-sm">${fmtTime(s.remainingSec)}</div>
+        </div>
+      `).join('') || '<p class="text-xs text-slate-400">No active sessions right now.</p>';
+
+      renderStations();
+
+      document.getElementById('liveTimersGrid').innerHTML = sessions.map(s => `
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs font-mono text-blue-700 font-semibold">${s.stationId}</span>
+              <h3 class="font-bold text-slate-900">${s.gamer}</h3>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-emerald-400 font-mono text-sm font-bold">${fmtTime(s.remainingSec)}</span>
+          </div>
+          <div class="text-xs text-slate-500 space-y-1 bg-slate-50 p-3 rounded-lg">
+            <div class="flex justify-between"><span>Booked Time:</span><span class="font-semibold text-slate-800">${s.hours} Hr(s) (₹${Math.round(s.rate * s.hours)})</span></div>
+            <div class="flex justify-between"><span>Cafe Orders:</span><span class="font-semibold text-slate-800">₹${s.foodCost}</span></div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="extendTime('${s.id}')" class="flex-1 py-1.5 text-xs font-medium border border-slate-300 rounded-lg hover:bg-slate-50">+30 Min</button>
+            <button onclick="addSnack('${s.id}')" class="flex-1 py-1.5 text-xs font-medium border border-slate-300 rounded-lg hover:bg-slate-50">+ Snack (₹120)</button>
+            <button onclick="checkoutSession('${s.id}')" class="flex-1 py-1.5 text-xs font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800">End & Bill</button>
+          </div>
+        </div>
+      `).join('') || '<div class="col-span-3 bg-white p-8 rounded-xl border border-slate-200 text-center text-sm text-slate-500">All sessions closed. Book a station to start a live timer.</div>';
+
+      document.getElementById('ticketsList').innerHTML = tickets.map(t => {
+        const badge = t.status.includes('Pending') ? 'bg-amber-100 text-amber-800'
+                    : t.status.includes('Approved') ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-rose-100 text-rose-800';
+        return `
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs font-bold text-blue-700">${t.id}</span>
+                <span class="text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded">${t.stationId}</span>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${badge}">${t.status}</span>
+              </div>
+              <div class="font-bold text-slate-900 text-sm">${t.issue}</div>
+              <div class="text-xs text-slate-500"><strong>Tech Diagnosis:</strong> ${t.techNotes} • <strong>Estimated Cost:</strong> ₹${t.cost}</div>
+            </div>
+            ${t.status.includes('Pending') ? `
+              <div class="flex gap-2">
+                <button onclick="approveTicket('${t.id}', true)" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg">Approve & Unlock</button>
+                <button onclick="approveTicket('${t.id}', false)" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg">Reject</button>
+              </div>` : ''}
+          </div>`;
+      }).join('');
+
+      document.getElementById('adminStationsTable').innerHTML = stations.map(s => `
+        <tr>
+          <td class="px-4 py-3 font-semibold text-slate-900">${s.name} <span class="text-slate-400 font-mono">(${s.id})</span></td>
+          <td class="px-4 py-3 text-slate-600">${s.zone}</td>
+          <td class="px-4 py-3 font-semibold">₹${s.rate}</td>
+          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-[11px] font-medium ${s.status==='Available'?'bg-emerald-100 text-emerald-800':s.status==='Occupied'?'bg-blue-100 text-blue-800':'bg-amber-100 text-amber-800'}">${s.status}</span></td>
+        </tr>
+      `).join('');
+
+      document.getElementById('auditLogList').innerHTML = auditLogs.map(a => `
+        <div class="p-3 flex justify-between gap-3">
+          <div><span class="font-semibold text-slate-800">${a.actor}:</span> <span class="text-slate-600">${a.action}</span></div>
+          <span class="text-slate-400 shrink-0">${a.time}</span>
+        </div>
+      `).join('');
+    }
+
+    setInterval(() => {
+      sessions.forEach(s => { if (s.remainingSec > 0) s.remainingSec--; });
+      if (!document.getElementById('view-desk').classList.contains('hidden') ||
+          !document.getElementById('view-dashboard').classList.contains('hidden')) {
+        renderAll();
+      }
+    }, 1000);
+
+    renderAll();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlayZone // Esports Arena & Console Lounge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void: #05050a;
+      --bg-panel: rgba(13, 15, 28, 0.86);
+      --neon-violet: #8b5cf6;
+      --neon-cyan: #06b6d4;
+      --neon-pink: #ec4899;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-void);
+      color: #f4f4f5;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(236, 72, 153, 0.08) 0%, transparent 45%);
+    }
+    .font-display { font-family: 'Orbitron', sans-serif; letter-spacing: 0.03em; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    .glass-card {
+      background: linear-gradient(155deg, rgba(17, 20, 38, 0.90) 0%, rgba(10, 11, 22, 0.94) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(139, 92, 246, 0.24);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+      transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(34, 211, 238, 0.45);
+      box-shadow: 0 14px 40px rgba(139, 92, 246, 0.18);
+    }
+    .nav-pill.active {
+      background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.45);
+    }
+    .btn-neon {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #06b6d4 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 22px rgba(139, 92, 246, 0.4);
+      transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+    .btn-neon:hover {
+      opacity: 0.94;
+      transform: translateY(-1px);
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; color: #09090b !important; }
+      #invoicePrintBox { background: #ffffff !important; color: #09090b !important; border: 1px solid #d4d4d8 !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
+
+  <!-- TOP COMMAND HEADER -->
+  <header class="bg-[#070812]/90 backdrop-blur-md border-b border-violet-500/20 sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-cyan-400 text-white flex items-center justify-center font-display font-black text-lg shadow-lg shadow-violet-500/30">
+          PZ
+        </div>
+        <div>
+          <span class="font-display font-extrabold text-xl tracking-wider text-white">PLAY<span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">ZONE</span></span>
+          <p class="hidden sm:block text-[11px] text-slate-400">Esports Arena &amp; Console Lounge</p>
+        </div>
+      </div>
+
+      <!-- Role Navigation -->
+      <nav id="roleNav" class="hidden md:flex items-center gap-2 text-xs"></nav>
+
+      <!-- Active User & Logout -->
+      <div id="userControls" class="hidden items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div id="navUserName" class="text-xs font-bold text-white">User</div>
+          <div id="navUserRole" class="text-[11px] font-mono-code text-cyan-400">Role</div>
+        </div>
+        <button type="button" onclick="logout()" class="px-3.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-rose-500 hover:text-rose-400 text-xs font-semibold text-slate-300 transition">
+          Logout
+        </button>
+      </div>
+    </div>
+    <!-- Mobile Role Nav -->
+    <div id="mobileRoleNav" class="hidden md:hidden flex overflow-x-auto gap-2 px-4 py-2 border-t border-slate-800/80 bg-[#070812] text-xs"></div>
+  </header>
+
+  <!-- TOAST MESSAGE -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-[#111426] border border-cyan-400/50 text-cyan-200 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold no-print"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 flex flex-col">
+
+    <!-- ==================== 1. GAMING HERO LOGIN & REGISTRATION PAGE ==================== -->
+    <section id="page-login" class="relative flex-1 flex items-center overflow-hidden py-10 px-4 sm:px-6">
+      <!-- Full-Bleed Custom Esports Gaming Background Artwork -->
+      <div id="loginHeroBg" class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-45 pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-[#05050a] via-[#05050a]/80 to-[#05050a]/75 pointer-events-none"></div>
+      <div class="absolute -top-24 -left-24 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 max-w-7xl w-full mx-auto grid lg:grid-cols-12 gap-10 items-center">
+        <!-- Left Esports Hero Showcase -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="inline-flex items-center gap-2 text-[11px] font-mono-code uppercase tracking-widest text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-3.5 py-1.5 rounded-full">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            <span>NEXT-GEN GAMING LOUNGE</span>
+          </div>
+
+          <h1 class="font-display text-4xl sm:text-6xl font-black text-white leading-[1.05]">
+            ENTER THE <span class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400">ULTIMATE</span> GAMING ARENA.
+          </h1>
+
+          <p class="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
+            Jump into 240Hz RTX 4070 battle-stations, 4K PlayStation 5 OLED bays, F1 Racing Simulators, and Meta Quest VR pods. Book your rig, order snacks to your seat, and track your gaming history.
+          </p>
+
+          <!-- 3 Pure Gaming Highlights -->
+          <div class="grid sm:grid-cols-3 gap-3.5 text-xs pt-1">
+            <div class="glass-card p-4 rounded-xl border-violet-500/30">
+              <div class="font-display text-violet-400 font-bold text-sm">RTX 4070 RIGS</div>
+              <p class="text-slate-400 text-[11px] mt-1">240Hz competitive PC setups preloaded with Valorant, CS2 &amp; GTA V.</p>
+            </div>
+            <div class="glass-card p-4 rounded-xl border-cyan-500/30">
+              <div class="font-display text-cyan-400 font-bold text-sm">PS5 &amp; SIM BAYS</div>
+              <p class="text-slate-400 text-[11px] mt-1">65" 4K OLED console lounges, FC 26, Cricket 26 &amp; F1 racing rigs.</p>
+            </div>
+            <div class="glass-card p-4 rounded-xl border-fuchsia-500/30">
+              <div class="font-display text-fuchsia-400 font-bold text-sm">CAFE &amp; QR BILLS</div>
+              <p class="text-slate-400 text-[11px] mt-1">Order chilled drinks &amp; snacks mid-game with instant QR receipts.</p>
+            </div>
+          </div>
+
+          <!-- Public Invoice QR Verification -->
+          <div class="glass-card p-5 rounded-2xl space-y-3 max-w-xl">
+            <div class="flex items-center justify-between">
+              <span class="font-display text-xs font-bold text-emerald-400 uppercase tracking-wider">Public Invoice QR Verification</span>
+              <span class="text-[10px] font-mono-code text-slate-400">INSTANT CHECK</span>
+            </div>
+            <div class="flex gap-2">
+              <input id="verifyInput" type="text" placeholder="Enter Invoice ID (e.g. PZ-2026-1001)" class="flex-1 px-3.5 py-2.5 text-xs bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white font-mono-code focus:outline-none focus:border-cyan-400" />
+              <button type="button" onclick="verifyInvoice()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase rounded-xl transition">Verify</button>
+            </div>
+            <div id="verifyResult" class="hidden text-xs p-3 rounded-xl"></div>
+          </div>
+        </div>
+
+        <!-- Right Glassmorphic Login / Direct Gamer Account Creation -->
+        <div class="lg:col-span-5 glass-card p-6 sm:p-8 rounded-2xl space-y-5 border-violet-500/35">
+          <div class="grid grid-cols-2 gap-2 bg-[#070812]/90 p-1.5 rounded-xl border border-slate-800">
+            <button type="button" id="authTabLogin" onclick="switchAuthMode('login')" class="py-2.5 rounded-lg font-display font-bold text-xs uppercase btn-neon transition">
+              Sign In
+            </button>
+            <button type="button" id="authTabSignup" onclick="switchAuthMode('signup')" class="py-2.5 rounded-lg font-display font-bold text-xs uppercase text-slate-400 hover:text-white transition">
+              Create Account
+            </button>
+          </div>
+
+          <!-- SIGN IN FORM -->
+          <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-mono-code text-slate-300 mb-1.5">USER ID OR EMAIL</label>
+              <input id="loginId" type="text" required autocomplete="username" placeholder="Enter your User ID or Email" class="w-full px-4 py-3 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-violet-400" />
+            </div>
+            <div>
+              <label class="block text-xs font-mono-code text-slate-300 mb-1.5">PASSWORD</label>
+              <input id="loginPassword" type="password" required autocomplete="current-password" placeholder="Enter your password" class="w-full px-4 py-3 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-violet-400" />
+            </div>
+            <div id="loginError" class="hidden text-xs text-rose-300 bg-rose-950/70 border border-rose-500/40 p-3 rounded-xl"></div>
+            <button type="submit" class="w-full py-3.5 btn-neon font-display font-bold text-sm uppercase tracking-wider rounded-xl">
+              Launch Arena →
+            </button>
+            <p class="text-center text-xs text-slate-400 pt-1">
+              New to PlayZone? <button type="button" onclick="switchAuthMode('signup')" class="text-cyan-400 font-semibold hover:underline">Create your Gamer Account</button>
+            </p>
+          </form>
+
+          <!-- DIRECT GAMER ACCOUNT CREATION FORM (NO FAKE RANDOM OTP!) -->
+          <form id="signupForm" onsubmit="handleSignup(event)" class="hidden space-y-3.5">
+            <div>
+              <label class="block text-xs font-mono-code text-slate-300 mb-1">PLAYER NAME / GAMER TAG</label>
+              <input id="regName" type="text" required placeholder="e.g. Rohan Sharma" class="w-full px-3.5 py-2.5 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400" />
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-mono-code text-slate-300 mb-1">GAMER ID</label>
+                <input id="regUserId" type="text" required placeholder="e.g. rohan_gg" class="w-full px-3.5 py-2.5 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-mono-code text-slate-300 mb-1">EMAIL ADDRESS</label>
+                <input id="regEmail" type="email" required placeholder="e.g. rohan@gmail.com" class="w-full px-3.5 py-2.5 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-mono-code text-slate-300 mb-1">PASSWORD</label>
+                <input id="regPassword" type="password" required minlength="4" placeholder="Min 4 characters" class="w-full px-3.5 py-2.5 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-mono-code text-slate-300 mb-1">CONFIRM PASSWORD</label>
+                <input id="regConfirmPassword" type="password" required minlength="4" placeholder="Re-enter password" class="w-full px-3.5 py-2.5 text-sm bg-[#070812]/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+            <div id="signupError" class="hidden text-xs text-rose-300 bg-rose-950/70 border border-rose-500/40 p-3 rounded-xl"></div>
+            <button type="submit" class="w-full py-3.5 btn-neon font-display font-bold text-sm uppercase tracking-wider rounded-xl">
+              Create Gamer Account &amp; Play →
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. ROLE-LOCKED WORKSPACE ==================== -->
+    <section id="page-workspace" class="hidden max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <div id="workspaceContent"></div>
+    </section>
+
+  </main>
+
+  <!-- BOOKING + VISUAL GAME SELECTION MODAL -->
+  <div id="bookingModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
+    <div class="glass-card rounded-2xl max-w-lg w-full p-6 space-y-4 border-violet-500/40">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="font-display font-bold text-base text-white" id="bookModalTitle">BOOK GAMING RIG</h3>
+        <button type="button" onclick="closeModal('bookingModal')" class="text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-mono-code text-slate-400 mb-1">PLAYER NAME</label>
+          <input id="bookGamerName" type="text" class="w-full px-3.5 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white" />
+        </div>
+        <div>
+          <label class="block font-mono-code text-cyan-400 mb-1.5">SELECT GAME TO LAUNCH</label>
+          <div id="bookGameCards" class="grid grid-cols-3 gap-2"></div>
+          <input type="hidden" id="bookSelectedGame" />
+        </div>
+        <div>
+          <label class="block font-mono-code text-slate-400 mb-1">DURATION &amp; EXACT CHARGE</label>
+          <select id="bookDuration" class="w-full px-3.5 py-2.5 bg-[#070812] border border-slate-700 rounded-xl text-white font-semibold"></select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeModal('bookingModal')" class="px-4 py-2 text-xs border border-slate-700 text-slate-300 rounded-xl">Cancel</button>
+        <button type="button" onclick="confirmBooking()" class="px-5 py-2 text-xs font-display font-bold btn-neon rounded-xl">Confirm &amp; Start Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISUAL SNACK MENU MODAL -->
+  <div id="snackModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
+    <div class="glass-card rounded-2xl max-w-xl w-full p-6 space-y-4 border-cyan-500/40">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-display font-bold text-base text-white">PLAYZONE CAFE &amp; SNACK BAR</h3>
+          <p class="text-xs text-slate-400">Tap any item to add directly to the active session bill.</p>
+        </div>
+        <button type="button" onclick="closeModal('snackModal')" class="text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+      <div id="snackGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- PAYMENT SUBMISSION MODAL (CLOSING DOES NOT COMPLETE PAYMENT) -->
+  <div id="paymentModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 no-print">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6 space-y-4 border-violet-500/40">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-display font-bold text-base text-white">COMPLETE SESSION PAYMENT</h3>
+          <p class="text-[11px] text-slate-400">Closing this window keeps your session active.</p>
+        </div>
+        <button type="button" onclick="closeModal('paymentModal')" class="text-slate-400 hover:text-white text-xl" title="Close without paying">&times;</button>
+      </div>
+
+      <div id="paySummaryBox" class="bg-[#070812] p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5"></div>
+
+      <div class="space-y-3 text-xs">
+        <label class="block font-mono-code text-slate-400">CHOOSE PAYMENT METHOD</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="payMethodOnlineBtn" onclick="selectPayMethod('Online UPI')" class="p-2.5 rounded-xl border border-cyan-400 bg-cyan-500/15 text-cyan-300 font-bold text-center">
+            Online UPI / QR
+          </button>
+          <button type="button" id="payMethodCashBtn" onclick="selectPayMethod('Cash at Desk')" class="p-2.5 rounded-xl border border-slate-800 bg-[#070812] text-slate-400 font-bold text-center">
+            Cash at Desk
+          </button>
+        </div>
+
+        <div id="onlineQrBox" class="p-3 rounded-xl bg-[#070812] border border-slate-800 flex items-center justify-between gap-3">
+          <div class="space-y-1">
+            <div class="font-semibold text-white">Scan UPI QR to Pay</div>
+            <div class="text-[11px] text-slate-400">UPI ID: <span class="font-mono-code text-cyan-300">playzone@upi</span></div>
+            <input id="upiRefInput" type="text" placeholder="Enter UPI Ref / UTR (optional)" class="mt-1 w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono-code text-[11px]" />
+          </div>
+          <div id="upiQrSvg" class="w-16 h-16 shrink-0 bg-white rounded-lg p-1 flex items-center justify-center"></div>
+        </div>
+
+        <div class="p-2.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-[11px] text-violet-200">
+          Note: Once submitted, the <strong>Desk Operator or Cafe Manager</strong> will verify &amp; approve your payment to issue the final receipt.
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" onclick="closeModal('paymentModal')" class="px-4 py-2 text-xs border border-slate-700 text-slate-300 rounded-xl hover:bg-slate-800">Cancel / Keep Playing</button>
+        <button type="button" onclick="submitSessionPayment()" class="px-5 py-2 text-xs font-display font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl">Submit for Approval ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERIFIED INVOICE MODAL -->
+  <div id="invoiceModal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div id="invoicePrintBox" class="glass-card rounded-2xl max-w-md w-full p-6 space-y-4 border-emerald-500/40">
+      <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+        <div>
+          <div class="font-display font-bold text-cyan-400 text-base">PLAYZONE VERIFIED RECEIPT</div>
+          <div id="invCode" class="text-xs font-mono-code text-slate-400">PZ-2026-1002</div>
+        </div>
+        <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 text-[10px] font-display font-bold rounded-full">APPROVED &amp; PAID</span>
+      </div>
+      <div id="invDetails" class="text-xs space-y-2"></div>
+      <div class="flex items-center justify-between bg-[#070812] p-3 rounded-xl border border-slate-800">
+        <div class="text-xs text-slate-400 pr-2">
+          <div class="font-semibold text-white">QR Verification Ready</div>
+          <div>Verify this Invoice ID on the PlayZone portal anytime.</div>
+        </div>
+        <div class="w-14 h-14 shrink-0 bg-white text-slate-950 flex items-center justify-center rounded-lg font-mono-code font-bold text-[8px] text-center p-1">
+          QR CODE<br/>VERIFIED
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 no-print">
+        <button type="button" onclick="closeModal('invoiceModal')" class="px-4 py-2 text-xs border border-slate-700 text-slate-300 rounded-xl">Close</button>
+        <button type="button" onclick="window.print()" class="px-4 py-2 text-xs font-display font-bold btn-neon rounded-xl">Print / Save PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-900/90 py-4 text-center text-xs text-slate-500 no-print">
+    PlayZone – Gaming Cafe &amp; Console Lounge Manager • M Vydhik (2403A54012) • SR University
+  </footer>
+
+  <script>
+    // ==================== FULL-BLEED GAMING BACKGROUND ARTWORK ====================
+    (function setGamingHeroBg() {
+      const heroSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 800">
+        <defs>
+          <radialGradient id="rg1" cx="25%" cy="35%" r="55%">
+            <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#05050a" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="rg2" cx="78%" cy="45%" r="50%">
+            <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.45"/>
+            <stop offset="100%" stop-color="#05050a" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="neonStroke" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#a855f7"/>
+            <stop offset="50%" stop-color="#ec4899"/>
+            <stop offset="100%" stop-color="#22d3ee"/>
+          </linearGradient>
+          <pattern id="hexGrid" width="60" height="52" patternUnits="userSpaceOnUse">
+            <path d="M30 0 L60 15 L60 37 L30 52 L0 37 L0 15 Z" fill="none" stroke="#8b5cf6" stroke-opacity="0.14" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="1440" height="800" fill="#05050a"/>
+        <rect width="1440" height="800" fill="url(#hexGrid)"/>
+        <rect width="1440" height="800" fill="url(#rg1)"/>
+        <rect width="1440" height="800" fill="url(#rg2)"/>
+        <!-- Arena Perspective Floor Lines -->
+        <g stroke="#22d3ee" stroke-opacity="0.14" stroke-width="1.2">
+          <line x1="0" y1="680" x2="1440" y2="680"/>
+          <line x1="0" y1="730" x2="1440" y2="730"/>
+          <line x1="200" y1="620" x2="40" y2="800"/>
+          <line x1="480" y1="620" x2="380" y2="800"/>
+          <line x1="720" y1="620" x2="720" y2="800"/>
+          <line x1="960" y1="620" x2="1060" y2="800"/>
+          <line x1="1240" y1="620" x2="1400" y2="800"/>
+        </g>
+        <!-- Giant Stylized Esports Controller Silhouette -->
+        <g transform="translate(470, 175) rotate(-8)" opacity="0.55">
+          <path d="M110 95 C145 65, 355 65, 390 95 L445 235 C462 280, 420 325, 378 302 L315 255 L185 255 L122 302 C80 325, 38 280, 55 235 Z"
+                fill="#0b0d1e" stroke="url(#neonStroke)" stroke-width="4"/>
+          <!-- D-Pad -->
+          <rect x="135" y="145" width="18" height="54" rx="4" fill="#22d3ee" fill-opacity="0.7"/>
+          <rect x="117" y="163" width="54" height="18" rx="4" fill="#22d3ee" fill-opacity="0.7"/>
+          <!-- Action Buttons -->
+          <circle cx="355" cy="145" r="9" fill="#ec4899"/>
+          <circle cx="380" cy="170" r="9" fill="#a855f7"/>
+          <circle cx="355" cy="195" r="9" fill="#22d3ee"/>
+          <circle cx="330" cy="170" r="9" fill="#f59e0b"/>
+          <!-- Analog Sticks -->
+          <circle cx="205" cy="212" r="22" fill="#131730" stroke="#8b5cf6" stroke-width="3"/>
+          <circle cx="295" cy="212" r="22" fill="#131730" stroke="#06b6d4" stroke-width="3"/>
+        </g>
+        <!-- Floating Neon Accent Rings -->
+        <circle cx="1180" cy="180" r="140" fill="none" stroke="#06b6d4" stroke-opacity="0.18" stroke-width="2" stroke-dasharray="14 10"/>
+        <circle cx="240" cy="560" r="110" fill="none" stroke="#ec4899" stroke-opacity="0.18" stroke-width="2" stroke-dasharray="10 8"/>
+      </svg>`;
+      const el = document.getElementById('loginHeroBg');
+      if (el) el.style.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(heroSvg)}")`;
+    })();
+
+    // ==================== EMBEDDED VECTOR COVER ART (GAMES & SNACKS) ====================
+    function makeArt(bg1, bg2, accent, title, tag, iconPath) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 150">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="${bg1}"/>
+            <stop offset="100%" stop-color="${bg2}"/>
+          </linearGradient>
+        </defs>
+        <rect width="320" height="150" fill="url(#g)"/>
+        <circle cx="270" cy="30" r="70" fill="${accent}" fill-opacity="0.18"/>
+        <circle cx="45" cy="135" r="55" fill="${accent}" fill-opacity="0.14"/>
+        <g transform="translate(225, 38)" stroke="${accent}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">${iconPath}</g>
+        <rect x="18" y="20" width="76" height="20" rx="6" fill="${accent}" fill-opacity="0.22"/>
+        <text x="56" y="34" font-family="sans-serif" font-size="10" font-weight="700" fill="${accent}" text-anchor="middle">${tag}</text>
+        <text x="18" y="102" font-family="sans-serif" font-size="22" font-weight="800" fill="#ffffff">${title}</text>
+        <line x1="18" y1="116" x2="90" y2="116" stroke="${accent}" stroke-width="3" stroke-linecap="round"/>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    const GAME_CATALOG = [
+      { title: 'Valorant', zone: 'PC Zone', genre: 'TACTICAL FPS', img: makeArt('#2a0815', '#0f172a', '#fb7185', 'VALORANT', '5V5 FPS', '<polygon points="12 4 36 36 24 36 6 12"/><polygon points="52 4 28 36 40 36 58 12"/>') },
+      { title: 'CS2', zone: 'PC Zone', genre: 'COMPETITIVE FPS', img: makeArt('#291805', '#0f172a', '#fbbf24', 'COUNTER-STRIKE 2', 'ESPORTS', '<circle cx="32" cy="32" r="22"/><line x1="32" y1="4" x2="32" y2="60"/><line x1="4" y1="32" x2="60" y2="32"/>') },
+      { title: 'GTA V', zone: 'PC Zone', genre: 'OPEN WORLD', img: makeArt('#06281e', '#0f172a', '#34d399', 'GTA V ONLINE', 'ACTION', '<rect x="8" y="14" width="48" height="36" rx="8"/><circle cx="22" cy="32" r="6"/><circle cx="42" cy="32" r="6"/>') },
+      { title: 'FC 26', zone: 'PS5 Lounge', genre: 'FOOTBALL', img: makeArt('#062c22', '#091526', '#10b981', 'EA SPORTS FC 26', 'PS5 4K', '<circle cx="32" cy="32" r="24"/><polygon points="32 18 44 27 39 41 25 41 20 27"/>') },
+      { title: 'Cricket 26', zone: 'PS5 Lounge', genre: 'CRICKET', img: makeArt('#08203e', '#0f172a', '#38bdf8', 'CRICKET 26', 'STADIUM', '<line x1="16" y1="52" x2="48" y2="12"/><circle cx="44" cy="46" r="9"/>') },
+      { title: 'Tekken 8', zone: 'PS5 Lounge', genre: 'FIGHTING', img: makeArt('#2e1065', '#09090b', '#c084fc', 'TEKKEN 8', 'ARCADE', '<polygon points="32 6 42 26 60 28 45 42 50 60 32 50 14 60 19 42 4 28 22 26"/>') },
+      { title: 'Forza Horizon 6', zone: 'Racing Sim', genre: 'RACING', img: makeArt('#3b0764', '#18181b', '#f472b6', 'FORZA HORIZON 6', 'SIM RIG', '<path d="M8 42 L16 24 L48 24 L56 42 Z"/><circle cx="20" cy="44" r="6"/><circle cx="44" cy="44" r="6"/>') },
+      { title: 'F1 25', zone: 'Racing Sim', genre: 'FORMULA 1', img: makeArt('#3f0d12', '#09090b', '#f87171', 'F1 25 GP', 'WHEEL SIM', '<rect x="10" y="24" width="44" height="16" rx="6"/><circle cx="16" cy="20" r="5"/><circle cx="48" cy="20" r="5"/><circle cx="16" cy="44" r="5"/><circle cx="48" cy="44" r="5"/>') },
+      { title: 'Beat Saber', zone: 'VR Booth', genre: 'VR RHYTHM', img: makeArt('#1e1b4b', '#09090b', '#22d3ee', 'BEAT SABER VR', 'QUEST 3', '<rect x="10" y="20" width="44" height="24" rx="8"/><line x1="14" y1="54" x2="50" y2="10"/>') }
+    ];
+
+    const SNACK_MENU = [
+      { name: 'Iced Cold Coffee', price: 90, tag: 'BEVERAGE', img: makeArt('#27180c', '#121216', '#f59e0b', 'COLD COFFEE', 'CHILLED', '<path d="M18 16 H46 L42 54 H22 Z"/><line x1="36" y1="8" x2="32" y2="24"/>') },
+      { name: 'Peri-Peri Fries', price: 110, tag: 'SNACK', img: makeArt('#331a05', '#121216', '#fb923c', 'PERI FRIES', 'CRISPY', '<path d="M16 28 H48 L44 54 H20 Z"/><line x1="24" y1="12" x2="24" y2="28"/><line x1="32" y1="10" x2="32" y2="28"/><line x1="40" y1="13" x2="40" y2="28"/>') },
+      { name: 'Red Bull Energy', price: 125, tag: 'ENERGY', img: makeArt('#0a1e3d', '#121216', '#38bdf8', 'RED BULL CAN', 'BOOST', '<rect x="20" y="10" width="24" height="44" rx="4"/><line x1="20" y1="22" x2="44" y2="22"/>') },
+      { name: 'Cheese Nachos', price: 150, tag: 'COMBO', img: makeArt('#302104', '#121216', '#facc15', 'CHEESE NACHOS', 'LOADED', '<polygon points="32 12 52 48 12 48"/><polygon points="24 24 40 52 8 52"/>') },
+      { name: 'Chicken Burger', price: 180, tag: 'MEAL', img: makeArt('#361509', '#121216', '#f87171', 'CHICKEN BURGER', 'HOT', '<path d="M14 28 C14 14 50 14 50 28 Z"/><line x1="12" y1="34" x2="52" y2="34"/><rect x="14" y="40" width="36" height="8" rx="4"/>') },
+      { name: 'Paneer Pizza', price: 210, tag: 'SHARE', img: makeArt('#3b1206', '#121216', '#fb7185', 'PAN PIZZA', '8 INCH', '<polygon points="32 10 54 50 10 50"/><circle cx="32" cy="34" r="4"/><circle cx="25" cy="43" r="3"/><circle cx="39" cy="43" r="3"/>') }
+    ];
+
+    function getGameImg(title) {
+      const g = GAME_CATALOG.find(x => x.title === title);
+      return g ? g.img : GAME_CATALOG[0].img;
+    }
+
+    // ==================== ACCOUNTS & STRICT RBAC ====================
+    const DEFAULT_USERS = [
+      { id: 'Vydhik', email: 'vydhik@playzone.in', password: 'Vydhik@77', name: 'M Vydhik', role: 'manager' },
+      { id: 'desk_op_49', email: 'desk49@playzone.in', password: 'Desk#892', name: 'Arjun B (Desk)', role: 'desk' },
+      { id: 'tech_fix_73', email: 'tech73@playzone.in', password: 'Tech#641', name: 'Akash K (Tech)', role: 'tech' }
+    ];
+
+    const ROLE_CONFIG = {
+      gamer: {
+        label: 'Gamer',
+        tabs: [
+          { id: 'gamer-home', label: 'My Profile & History' },
+          { id: 'gamer-browse', label: 'Pick Game & Book Rig' },
+          { id: 'gamer-session', label: 'Active Session & Pay' }
+        ]
+      },
+      desk: {
+        label: 'Desk Operator',
+        tabs: [
+          { id: 'desk-timers', label: 'Live Timers & Approvals' },
+          { id: 'desk-walkin', label: 'Walk-In Booking' },
+          { id: 'desk-report', label: 'Report Faulty Gear' }
+        ]
+      },
+      tech: {
+        label: 'Hardware Tech',
+        tabs: [
+          { id: 'tech-queue', label: 'Repair Queue' }
+        ]
+      },
+      manager: {
+        label: 'Cafe Manager',
+        tabs: [
+          { id: 'mgr-overview', label: 'Arena & Approvals' },
+          { id: 'mgr-rigs', label: 'Stations & Gamers' },
+          { id: 'mgr-logs', label: 'Bills & Audit Logs' }
+        ]
+      }
+    };
+
+    const DEFAULT_STATIONS = [
+      { id: 'PC-01', name: 'RTX Phantom 01', zone: 'PC Zone', specs: 'RTX 4070 • 240Hz', rate: 150, status: 'Available', games: ['Valorant', 'CS2', 'GTA V'] },
+      { id: 'PC-02', name: 'RTX Phantom 02', zone: 'PC Zone', specs: 'RTX 4070 • 240Hz', rate: 150, status: 'Available', games: ['Valorant', 'CS2', 'GTA V'] },
+      { id: 'PC-03', name: 'RTX Striker 03', zone: 'PC Zone', specs: 'RTX 4060 Ti • 165Hz', rate: 120, status: 'Available', games: ['Valorant', 'GTA V', 'Cricket 26'] },
+      { id: 'PS5-01', name: 'PS5 Pro Bay 1', zone: 'PS5 Lounge', specs: 'PS5 • 65" 4K OLED', rate: 250, status: 'Available', games: ['FC 26', 'Cricket 26', 'Tekken 8'] },
+      { id: 'PS5-02', name: 'PS5 Pro Bay 2', zone: 'PS5 Lounge', specs: 'PS5 • 55" 4K TV', rate: 220, status: 'Available', games: ['FC 26', 'Cricket 26', 'Tekken 8'] },
+      { id: 'SIM-01', name: 'F1 Apex Sim Rig', zone: 'Racing Sim', specs: 'Logitech G923 Wheel', rate: 300, status: 'Available', games: ['Forza Horizon 6', 'F1 25'] },
+      { id: 'VR-01', name: 'Meta Quest VR Pod', zone: 'VR Booth', specs: 'Meta Quest 3', rate: 350, status: 'Available', games: ['Beat Saber'] }
+    ];
+
+    const STORE_KEY = 'playzone_arena_v6';
+    const SYNC_TOPIC = 'sru/playzone/vydhik77/arena_state_v6';
+    const CLIENT_ID = 'pz_' + Math.random().toString(16).slice(2, 10);
+
+    function initialData() {
+      return {
+        updatedAt: 0,
+        users: JSON.parse(JSON.stringify(DEFAULT_USERS)),
+        stations: JSON.parse(JSON.stringify(DEFAULT_STATIONS)),
+        sessions: [],
+        pendingPayments: [],
+        tickets: [],
+        invoices: {
+          'PZ-2026-1001': { id: 'PZ-2026-1001', gamer: 'M Vydhik', gamerId: 'Vydhik', station: 'PS5 Pro Bay 1', game: 'Cricket 26', hours: 1, rate: 250, stationFee: 250, foodCost: 0, total: 250, payMethod: 'Online UPI', date: '25 Nov 2026' }
+        },
+        auditLogs: [
+          { time: 'Ready', actor: 'PlayZone OS', action: 'Arena initialized with 7 gaming rigs' }
+        ],
+        totalRevenue: 0
+      };
+    }
+
+    function loadLocalState() {
+      try {
+        const s = JSON.parse(localStorage.getItem(STORE_KEY));
+        if (s && Array.isArray(s.stations) && Array.isArray(s.users)) return s;
+      } catch (e) {}
+      return initialData();
+    }
+
+    let state = loadLocalState();
+    let mqttClient = null;
+    let currentUser = null;
+    let activeTab = '';
+    let selectedGameFilter = 'All';
+    let bookingStationId = null;
+    let snackSessionId = null;
+    let payingSessionId = null;
+    let selectedPayMethod = 'Online UPI';
+
+    // Silent background multi-device sync (no UI clutter)
+    function initBackgroundSync() {
+      try {
+        mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+          clientId: CLIENT_ID,
+          clean: true,
+          reconnectPeriod: 3000
+        });
+        mqttClient.on('connect', () => {
+          mqttClient.subscribe(SYNC_TOPIC, { qos: 1 });
+        });
+        mqttClient.on('message', (topic, payload) => {
+          if (topic !== SYNC_TOPIC) return;
+          try {
+            const incoming = JSON.parse(payload.toString());
+            if (incoming && incoming.updatedAt && incoming.updatedAt > (state.updatedAt || 0)) {
+              state = incoming;
+              localStorage.setItem(STORE_KEY, JSON.stringify(state));
+              if (currentUser) {
+                const freshUser = state.users.find(u => u.id === currentUser.id);
+                if (freshUser) currentUser = freshUser;
+                renderWorkspace();
+              }
+            }
+          } catch (err) {}
+        });
+      } catch (e) {}
+    }
+
+    function saveAndBroadcast() {
+      state.updatedAt = Date.now();
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(SYNC_TOPIC, JSON.stringify(state), { qos: 1, retain: true });
+      }
+    }
+
+    function resetSystem() {
+      state = initialData();
+      saveAndBroadcast();
+      renderWorkspace();
+      toast('All arena data reset!');
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() => el.classList.add('hidden'), 3200);
+    }
+
+    function nowStr() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ==================== AUTH & DIRECT GAMER REGISTRATION ====================
+    function switchAuthMode(mode) {
+      const isLogin = mode === 'login';
+      document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+      document.getElementById('signupForm').classList.toggle('hidden', isLogin);
+      document.getElementById('authTabLogin').className = isLogin
+        ? 'py-2.5 rounded-lg font-display font-bold text-xs uppercase btn-neon transition'
+        : 'py-2.5 rounded-lg font-display font-bold text-xs uppercase text-slate-400 hover:text-white transition';
+      document.getElementById('authTabSignup').className = !isLogin
+        ? 'py-2.5 rounded-lg font-display font-bold text-xs uppercase btn-neon transition'
+        : 'py-2.5 rounded-lg font-display font-bold text-xs uppercase text-slate-400 hover:text-white transition';
+      document.getElementById('loginError').classList.add('hidden');
+      document.getElementById('signupError').classList.add('hidden');
+    }
+
+    function handleSignup(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const id = document.getElementById('regUserId').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+      const confirmPass = document.getElementById('regConfirmPassword').value;
+      const errBox = document.getElementById('signupError');
+
+      if (!email.includes('@') || !email.includes('.')) {
+        errBox.textContent = 'Please enter a valid email address (e.g. player@gmail.com).';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (password !== confirmPass) {
+        errBox.textContent = 'Passwords do not match. Please re-enter the same password.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (state.users.some(u => u.id.toLowerCase() === id.toLowerCase() || (u.email && u.email.toLowerCase() === email))) {
+        errBox.textContent = 'That Gamer ID or Email is already registered. Please Sign In instead.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      errBox.classList.add('hidden');
+      const newUser = { id, email, password, name, role: 'gamer' };
+      state.users.push(newUser);
+      state.auditLogs.unshift({ time: nowStr(), actor: name, action: `Created Gamer account (${id} / ${email})` });
+      saveAndBroadcast();
+      enterRoleSession(newUser);
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const loginInput = document.getElementById('loginId').value.trim();
+      const pass = document.getElementById('loginPassword').value;
+      const errBox = document.getElementById('loginError');
+
+      const found = state.users.find(u =>
+        (u.id.toLowerCase() === loginInput.toLowerCase() || (u.email && u.email.toLowerCase() === loginInput.toLowerCase())) &&
+        u.password === pass
+      );
+
+      if (!found) {
+        errBox.textContent = 'Invalid User ID / Email or Password.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      errBox.classList.add('hidden');
+      enterRoleSession(found);
+    }
+
+    function enterRoleSession(user) {
+      currentUser = user;
+      const cfg = ROLE_CONFIG[user.role];
+      activeTab = cfg.tabs[0].id;
+
+      document.getElementById('page-login').classList.add('hidden');
+      document.getElementById('page-workspace').classList.remove('hidden');
+      document.getElementById('userControls').classList.remove('hidden');
+      document.getElementById('userControls').classList.add('flex');
+      document.getElementById('navUserName').textContent = user.name;
+      document.getElementById('navUserRole').textContent = cfg.label;
+
+      renderRoleNav();
+      renderWorkspace();
+      toast(`Welcome back, ${user.name}!`);
+    }
+
+    function logout() {
+      currentUser = null;
+      activeTab = '';
+      document.getElementById('loginId').value = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('page-workspace').classList.add('hidden');
+      document.getElementById('page-login').classList.remove('hidden');
+      document.getElementById('userControls').classList.add('hidden');
+      document.getElementById('roleNav').innerHTML = '';
+      document.getElementById('mobileRoleNav').innerHTML = '';
+      document.getElementById('mobileRoleNav').classList.add('hidden');
+    }
+
+    function renderRoleNav() {
+      if (!currentUser) return;
+      const tabs = ROLE_CONFIG[currentUser.role].tabs;
+      const html = tabs.map(t => `
+        <button type="button" onclick="switchTab('${t.id}')" class="nav-pill px-3.5 py-2 rounded-lg text-slate-300 hover:text-white transition ${activeTab === t.id ? 'active' : ''}">
+          ${t.label}
+        </button>
+      `).join('');
+      document.getElementById('roleNav').innerHTML = html;
+      document.getElementById('mobileRoleNav').innerHTML = html;
+      document.getElementById('mobileRoleNav').classList.remove('hidden');
+    }
+
+    function switchTab(tabId) {
+      if (!currentUser) return;
+      const allowed = ROLE_CONFIG[currentUser.role].tabs.some(t => t.id === tabId);
+      if (!allowed) return;
+      activeTab = tabId;
+      renderRoleNav();
+      renderWorkspace();
+    }
+
+    // ==================== PUBLIC RECEIPT VERIFIER ====================
+    function verifyInvoice() {
+      const code = document.getElementById('verifyInput').value.trim().toUpperCase();
+      const box = document.getElementById('verifyResult');
+      box.classList.remove('hidden');
+      const inv = state.invoices[code];
+      if (inv) {
+        box.className = 'text-xs p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200';
+        box.innerHTML = `<strong class="text-emerald-400">✓ VERIFIED RECEIPT (${code})</strong><br/>Gamer: ${inv.gamer} • Rig: ${inv.station} (${inv.game}) • Paid: ₹${inv.total} (${inv.payMethod})`;
+      } else {
+        box.className = 'text-xs p-3 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-200';
+        box.innerHTML = `<strong class="text-rose-400">✕ Not Found:</strong> No approved invoice matches "${code}".`;
+      }
+    }
+
+    // ==================== BOOKING & VISUAL GAME SELECTION ====================
+    function openBookModal(stationId, preselectedGame) {
+      bookingStationId = stationId;
+      const st = state.stations.find(s => s.id === stationId);
+      if (!st || st.status !== 'Available') return;
+
+      document.getElementById('bookModalTitle').textContent = `BOOK ${st.name.toUpperCase()} (${st.zone})`;
+      const nameInput = document.getElementById('bookGamerName');
+      if (currentUser.role === 'gamer') {
+        nameInput.value = currentUser.name;
+        nameInput.readOnly = true;
+      } else {
+        nameInput.value = '';
+        nameInput.readOnly = false;
+        nameInput.placeholder = 'Enter Walk-in Gamer Name';
+      }
+
+      const defaultGame = (preselectedGame && st.games.includes(preselectedGame)) ? preselectedGame : st.games[0];
+      selectModalGame(defaultGame, st.games);
+
+      document.getElementById('bookDuration').innerHTML = [1, 2, 3, 4].map(h =>
+        `<option value="${h}">${h} Hour${h > 1 ? 's' : ''} — ₹${st.rate * h}</option>`
+      ).join('');
+
+      document.getElementById('bookingModal').classList.remove('hidden');
+    }
+
+    function selectModalGame(gameTitle, stationGames) {
+      document.getElementById('bookSelectedGame').value = gameTitle;
+      const st = state.stations.find(s => s.id === bookingStationId);
+      const gamesList = stationGames || (st ? st.games : []);
+      document.getElementById('bookGameCards').innerHTML = gamesList.map(g => {
+        const active = g === gameTitle;
+        return `
+          <button type="button" onclick="selectModalGame('${g}')" class="rounded-xl overflow-hidden border text-left transition ${active ? 'border-cyan-400 ring-2 ring-cyan-400/40' : 'border-slate-800 opacity-75 hover:opacity-100'}">
+            <img src="${getGameImg(g)}" alt="${g}" class="w-full h-16 object-cover" />
+            <div class="p-1.5 bg-[#070812] text-[11px] font-bold text-white truncate">${g}</div>
+          </button>`;
+      }).join('');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function confirmBooking() {
+      const st = state.stations.find(s => s.id === bookingStationId);
+      if (!st || st.status !== 'Available') return;
+
+      const gamer = document.getElementById('bookGamerName').value.trim() || 'Walk-in Gamer';
+      const game = document.getElementById('bookSelectedGame').value || st.games[0];
+      const hours = parseInt(document.getElementById('bookDuration').value, 10) || 1;
+
+      st.status = 'Occupied';
+      state.sessions.push({
+        id: 'SES-' + Math.floor(100 + Math.random() * 900),
+        stationId: st.id,
+        stationName: st.name,
+        gamer,
+        gamerId: currentUser.role === 'gamer' ? currentUser.id : 'walkin',
+        game,
+        rate: st.rate,
+        hours,
+        remainingSec: hours * 3600,
+        foodCost: 0,
+        foodItems: [],
+        paymentPending: false
+      });
+
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Booked ${st.id} (${game}) for ${gamer} (${hours} hr)` });
+      saveAndBroadcast();
+      closeModal('bookingModal');
+      if (currentUser.role === 'gamer') switchTab('gamer-session');
+      else switchTab('desk-timers');
+      toast(`${st.name} booked for ${game}!`);
+    }
+
+    // ==================== VISUAL SNACK MENU ====================
+    function openSnackModal(sessionId) {
+      snackSessionId = sessionId;
+      document.getElementById('snackGrid').innerHTML = SNACK_MENU.map(item => `
+        <button type="button" onclick="addSnackItem('${item.name}', ${item.price})" class="glass-card rounded-xl overflow-hidden text-left group">
+          <img src="${item.img}" alt="${item.name}" class="w-full h-24 object-cover group-hover:scale-105 transition" />
+          <div class="p-2.5 flex items-center justify-between">
+            <span class="font-bold text-white text-xs truncate pr-1">${item.name}</span>
+            <span class="font-mono-code text-cyan-400 font-bold shrink-0">+₹${item.price}</span>
+          </div>
+        </button>
+      `).join('');
+      document.getElementById('snackModal').classList.remove('hidden');
+    }
+
+    function addSnackItem(name, price) {
+      const s = state.sessions.find(x => x.id === snackSessionId);
+      if (!s) return;
+      s.foodCost += price;
+      s.foodItems.push(`${name} (₹${price})`);
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Added ${name} (₹${price}) to ${s.stationId}` });
+      saveAndBroadcast();
+      closeModal('snackModal');
+      renderWorkspace();
+      toast(`Added ${name} (₹${price})`);
+    }
+
+    function extendSession(sessionId) {
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      s.remainingSec += 3600;
+      s.hours += 1;
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Extended ${s.stationId} by +1 Hour` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(`Extended ${s.stationId} by +1 Hour`);
+    }
+
+    // ==================== PAYMENT SUBMISSION & MANAGER/DESK APPROVAL ====================
+    function openPaymentModal(sessionId) {
+      const s = state.sessions.find(x => x.id === sessionId);
+      if (!s) return;
+      payingSessionId = sessionId;
+      const stationFee = s.rate * s.hours;
+      const total = stationFee + s.foodCost;
+
+      document.getElementById('paySummaryBox').innerHTML = `
+        <div class="flex justify-between text-slate-400"><span>Station &amp; Game:</span><span class="text-white font-semibold">${s.stationName} (${s.game})</span></div>
+        <div class="flex justify-between text-slate-400"><span>Playtime (${s.hours} hr × ₹${s.rate}):</span><span class="font-mono-code text-white">₹${stationFee}</span></div>
+        <div class="flex justify-between text-slate-400"><span>Cafe Snacks (${s.foodItems.length}):</span><span class="font-mono-code text-white">₹${s.foodCost}</span></div>
+        <div class="flex justify-between border-t border-slate-800 pt-2 text-sm font-display font-bold text-cyan-400"><span>TOTAL PAYABLE:</span><span>₹${total}</span></div>
+      `;
+
+      document.getElementById('upiQrSvg').innerHTML = `
+        <svg viewBox="0 0 36 36" class="w-full h-full fill-slate-950">
+          <rect x="2" y="2" width="10" height="10"/><rect x="4" y="4" width="6" height="6" fill="#fff"/><rect x="5" y="5" width="4" height="4"/>
+          <rect x="24" y="2" width="10" height="10"/><rect x="26" y="4" width="6" height="6" fill="#fff"/><rect x="27" y="5" width="4" height="4"/>
+          <rect x="2" y="24" width="10" height="10"/><rect x="4" y="26" width="6" height="6" fill="#fff"/><rect x="5" y="27" width="4" height="4"/>
+          <rect x="15" y="4" width="6" height="6"/><rect x="14" y="14" width="8" height="8"/><rect x="26" y="16" width="6" height="8"/><rect x="16" y="26" width="10" height="6"/>
+        </svg>`;
+
+      selectPayMethod('Online UPI');
+      document.getElementById('paymentModal').classList.remove('hidden');
+    }
+
+    function selectPayMethod(method) {
+      selectedPayMethod = method;
+      const isOnline = method === 'Online UPI';
+      document.getElementById('payMethodOnlineBtn').className = isOnline
+        ? 'p-2.5 rounded-xl border border-cyan-400 bg-cyan-500/15 text-cyan-300 font-bold text-center'
+        : 'p-2.5 rounded-xl border border-slate-800 bg-[#070812] text-slate-400 font-bold text-center';
+      document.getElementById('payMethodCashBtn').className = !isOnline
+        ? 'p-2.5 rounded-xl border border-cyan-400 bg-cyan-500/15 text-cyan-300 font-bold text-center'
+        : 'p-2.5 rounded-xl border border-slate-800 bg-[#070812] text-slate-400 font-bold text-center';
+      document.getElementById('onlineQrBox').classList.toggle('hidden', !isOnline);
+    }
+
+    function submitSessionPayment() {
+      const s = state.sessions.find(x => x.id === payingSessionId);
+      if (!s) return;
+
+      const stationFee = s.rate * s.hours;
+      const total = stationFee + s.foodCost;
+      const ref = selectedPayMethod === 'Online UPI'
+        ? (document.getElementById('upiRefInput').value.trim() || 'UPI-' + Math.floor(100000 + Math.random() * 899999))
+        : 'CASH-DESK';
+
+      s.paymentPending = true;
+      state.pendingPayments = state.pendingPayments.filter(p => p.sessionId !== s.id);
+      state.pendingPayments.unshift({
+        payId: 'PAY-' + Math.floor(100 + Math.random() * 899),
+        sessionId: s.id,
+        stationId: s.stationId,
+        stationName: s.stationName,
+        gamer: s.gamer,
+        gamerId: s.gamerId,
+        game: s.game,
+        hours: s.hours,
+        rate: s.rate,
+        stationFee,
+        foodCost: s.foodCost,
+        total,
+        payMethod: selectedPayMethod,
+        txnRef: ref,
+        submittedAt: nowStr()
+      });
+
+      state.auditLogs.unshift({ time: nowStr(), actor: s.gamer, action: `Submitted ${selectedPayMethod} payment (₹${total}) for ${s.stationId}` });
+      saveAndBroadcast();
+      closeModal('paymentModal');
+      renderWorkspace();
+      toast('Payment submitted! Awaiting Manager / Desk Operator approval.');
+    }
+
+    function approveOrRejectPayment(payId, approve) {
+      const idx = state.pendingPayments.findIndex(p => p.payId === payId);
+      if (idx === -1) return;
+      const p = state.pendingPayments[idx];
+      state.pendingPayments.splice(idx, 1);
+
+      const s = state.sessions.find(x => x.id === p.sessionId);
+      const st = state.stations.find(x => x.id === p.stationId);
+
+      if (approve) {
+        const invCode = 'PZ-2026-' + Math.floor(1002 + Math.random() * 8990);
+        state.invoices[invCode] = {
+          id: invCode,
+          gamer: p.gamer,
+          gamerId: p.gamerId,
+          station: p.stationName,
+          game: p.game,
+          hours: p.hours,
+          rate: p.rate,
+          stationFee: p.stationFee,
+          foodCost: p.foodCost,
+          total: p.total,
+          payMethod: `${p.payMethod} (${p.txnRef})`,
+          date: '25 Nov 2026'
+        };
+        state.totalRevenue += p.total;
+        state.sessions = state.sessions.filter(x => x.id !== p.sessionId);
+        if (st) st.status = 'Available';
+        state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Approved payment ${p.payId} (₹${p.total}) & issued Receipt ${invCode}` });
+        saveAndBroadcast();
+        renderWorkspace();
+        openInvoiceById(invCode);
+        toast(`Payment approved! Receipt ${invCode} issued.`);
+      } else {
+        if (s) s.paymentPending = false;
+        state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Rejected payment ${p.payId} for ${p.stationId}` });
+        saveAndBroadcast();
+        renderWorkspace();
+        toast(`Payment ${p.payId} rejected.`);
+      }
+    }
+
+    function openInvoiceById(code) {
+      const inv = state.invoices[code];
+      if (!inv) return;
+      document.getElementById('invCode').textContent = inv.id;
+      document.getElementById('invDetails').innerHTML = `
+        <div class="flex justify-between"><span class="text-slate-400">Gamer:</span><span class="font-semibold text-white">${inv.gamer}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Station &amp; Game:</span><span class="font-semibold text-white">${inv.station} (${inv.game})</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Playtime (${inv.hours} hr × ₹${inv.rate}):</span><span class="font-mono-code text-white">₹${inv.stationFee}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Cafe Snacks:</span><span class="font-mono-code text-white">₹${inv.foodCost}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Payment Mode:</span><span class="font-mono-code text-emerald-400">${inv.payMethod || 'Verified'}</span></div>
+        <div class="flex justify-between border-t border-slate-800 pt-2 text-base font-display font-bold text-cyan-400"><span>TOTAL PAID:</span><span>₹${inv.total}</span></div>
+      `;
+      document.getElementById('invoiceModal').classList.remove('hidden');
+    }
+
+    // ==================== 3-STAGE HARDWARE MAINTENANCE ====================
+    function submitDeskFaultReport(e) {
+      e.preventDefault();
+      const stationId = document.getElementById('faultStationId').value;
+      const issue = document.getElementById('faultDesc').value.trim();
+      const st = state.stations.find(s => s.id === stationId);
+      if (!st || !issue) return;
+
+      st.status = 'Maintenance';
+      state.sessions = state.sessions.filter(s => s.stationId !== stationId);
+
+      const ticketId = 'MT-' + Math.floor(100 + Math.random() * 899);
+      state.tickets.unshift({
+        id: ticketId,
+        stationId: st.id,
+        stationName: st.name,
+        issue,
+        reportedBy: currentUser.name,
+        techNotes: '',
+        cost: 0,
+        stage: 'Awaiting Tech Diagnosis'
+      });
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Reported fault on ${st.id} (${ticketId})` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(`Ticket ${ticketId} sent to Hardware Technician!`);
+    }
+
+    function submitTechEstimate(ticketId) {
+      const t = state.tickets.find(x => x.id === ticketId);
+      if (!t) return;
+      const notes = document.getElementById('notes-' + ticketId).value.trim() || 'Component replacement needed';
+      const cost = parseInt(document.getElementById('cost-' + ticketId).value, 10) || 500;
+      t.techNotes = notes;
+      t.cost = cost;
+      t.stage = 'Pending Manager Approval';
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Submitted ₹${cost} repair estimate for ${ticketId}` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(`Estimate ₹${cost} sent to Cafe Manager!`);
+    }
+
+    function managerReviewTicket(ticketId, approve) {
+      const t = state.tickets.find(x => x.id === ticketId);
+      if (!t) return;
+      t.stage = approve ? 'Approved - Ready for Repair' : 'Rejected by Manager';
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `${approve ? 'Approved' : 'Rejected'} repair budget ₹${t.cost} for ${ticketId}` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(approve ? `Approved ${ticketId} — sent to Tech to unlock` : `Rejected ${ticketId}`);
+    }
+
+    function completeTechRepair(ticketId) {
+      const t = state.tickets.find(x => x.id === ticketId);
+      if (!t) return;
+      t.stage = 'Completed & Unlocked';
+      const st = state.stations.find(s => s.id === t.stationId);
+      if (st) st.status = 'Available';
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Completed repair ${ticketId} & unlocked ${t.stationId}` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(`${t.stationName} fixed and back ONLINE!`);
+    }
+
+    function addNewStation(e) {
+      e.preventDefault();
+      const name = document.getElementById('newRigName').value.trim();
+      const zone = document.getElementById('newRigZone').value;
+      const rate = parseInt(document.getElementById('newRigRate').value, 10) || 150;
+      if (!name) return;
+
+      const id = 'RIG-' + (state.stations.length + 1);
+      const defaultGames = zone === 'PS5 Lounge' ? ['FC 26', 'Cricket 26', 'Tekken 8']
+                         : zone === 'Racing Sim' ? ['Forza Horizon 6', 'F1 25']
+                         : zone === 'VR Booth' ? ['Beat Saber']
+                         : ['Valorant', 'CS2', 'GTA V'];
+
+      state.stations.push({ id, name, zone, specs: 'Pro Gaming Setup', rate, status: 'Available', games: defaultGames });
+      state.auditLogs.unshift({ time: nowStr(), actor: currentUser.name, action: `Added new station ${name} (₹${rate}/hr)` });
+      saveAndBroadcast();
+      renderWorkspace();
+      toast(`Added ${name} to arena!`);
+    }
+
+    // ==================== ROLE-SPECIFIC RENDERERS ====================
+    function fmtTime(sec) {
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function renderWorkspace() {
+      if (!currentUser) return;
+      const container = document.getElementById('workspaceContent');
+
+      // ==================== GAMER VIEWS ====================
+      if (currentUser.role === 'gamer') {
+        const myInvoices = Object.values(state.invoices).filter(inv => inv.gamerId === currentUser.id || inv.gamer === currentUser.name);
+        const mySessions = state.sessions.filter(s => s.gamerId === currentUser.id || s.gamer === currentUser.name);
+
+        if (activeTab === 'gamer-home') {
+          const lastPlayed = myInvoices.length ? myInvoices[myInvoices.length - 1] : null;
+          const totalHours = myInvoices.reduce((acc, i) => acc + (i.hours || 1), 0);
+          const totalSpent = myInvoices.reduce((acc, i) => acc + (i.total || 0), 0);
+
+          const freq = {};
+          myInvoices.forEach(i => { freq[i.game] = (freq[i.game] || 0) + 1; });
+          const favGame = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || 'None yet';
+
+          container.innerHTML = `
+            <div class="space-y-6">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span class="text-xs font-mono-code text-cyan-400">@${currentUser.id} • ${currentUser.email || ''}</span>
+                  <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mt-0.5">WELCOME BACK, ${currentUser.name.toUpperCase()}</h2>
+                </div>
+                <button type="button" onclick="switchTab('gamer-browse')" class="px-5 py-2.5 btn-neon font-display font-bold text-xs uppercase rounded-xl">
+                  + Pick a Game &amp; Book Rig
+                </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass-card p-4 rounded-xl">
+                  <div class="text-xs text-slate-400">Recently Played</div>
+                  <div class="font-display text-lg font-bold text-cyan-400 mt-1 truncate">${lastPlayed ? lastPlayed.game : 'No Games Yet'}</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl">
+                  <div class="text-xs text-slate-400">Favorite Title</div>
+                  <div class="font-display text-lg font-bold text-fuchsia-400 mt-1 truncate">${favGame}</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl">
+                  <div class="text-xs text-slate-400">Hours Played</div>
+                  <div class="font-display text-lg font-bold text-white mt-1">${totalHours} Hrs</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl">
+                  <div class="text-xs text-slate-400">Total Spent</div>
+                  <div class="font-display text-lg font-bold text-emerald-400 mt-1">₹${totalSpent}</div>
+                </div>
+              </div>
+
+              ${lastPlayed ? `
+                <div class="glass-card rounded-2xl overflow-hidden grid md:grid-cols-12 border-violet-500/35">
+                  <img src="${getGameImg(lastPlayed.game)}" alt="${lastPlayed.game}" class="md:col-span-5 w-full h-44 object-cover" />
+                  <div class="md:col-span-7 p-5 flex flex-col justify-between">
+                    <div>
+                      <span class="text-[10px] font-mono-code uppercase px-2.5 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">RECENTLY PLAYED</span>
+                      <h3 class="font-display text-2xl font-bold text-white mt-2">${lastPlayed.game}</h3>
+                      <p class="text-xs text-slate-300 mt-1">Last played on <strong>${lastPlayed.station}</strong> • ${lastPlayed.hours} Hr(s) • Paid ₹${lastPlayed.total} (${lastPlayed.date})</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                      <button type="button" onclick="quickPlayAgain('${lastPlayed.game}')" class="px-4 py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">
+                        ▶ Play ${lastPlayed.game} Again
+                      </button>
+                      <button type="button" onclick="openInvoiceById('${lastPlayed.id}')" class="px-4 py-2 bg-slate-900 border border-slate-700 hover:border-cyan-400 text-xs text-white rounded-xl">
+                        View Receipt (${lastPlayed.id})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <div class="glass-card p-8 rounded-2xl text-center space-y-3">
+                  <div class="font-display text-base font-bold text-white">READY FOR YOUR FIRST MATCH?</div>
+                  <p class="text-xs text-slate-400">Your recently played games, hours, and verified receipts will appear here automatically.</p>
+                  <button type="button" onclick="switchTab('gamer-browse')" class="px-5 py-2.5 btn-neon font-display font-bold text-xs uppercase rounded-xl">Browse Games &amp; Rigs →</button>
+                </div>
+              `}
+
+              <div>
+                <h3 class="font-display text-base font-bold text-white mb-3">RECENT SESSIONS &amp; VERIFIED RECEIPTS</h3>
+                <div class="grid sm:grid-cols-2 gap-4">
+                  ${myInvoices.length ? myInvoices.slice().reverse().map(inv => `
+                    <div class="glass-card p-4 rounded-xl flex items-center justify-between gap-3">
+                      <div class="flex items-center gap-3">
+                        <img src="${getGameImg(inv.game)}" alt="${inv.game}" class="w-16 h-12 rounded-lg object-cover shrink-0" />
+                        <div>
+                          <div class="font-mono-code text-[11px] text-cyan-400 font-bold">${inv.id}</div>
+                          <div class="text-sm font-bold text-white">${inv.game} • ${inv.station}</div>
+                          <div class="text-xs text-slate-400">₹${inv.total} • ${inv.date}</div>
+                        </div>
+                      </div>
+                      <button type="button" onclick="openInvoiceById('${inv.id}')" class="px-3 py-1.5 bg-slate-900 border border-slate-700 hover:border-cyan-400 text-xs text-white rounded-lg shrink-0">Receipt</button>
+                    </div>
+                  `).join('') : '<p class="text-xs text-slate-500">No completed sessions yet.</p>'}
+                </div>
+              </div>
+            </div>`;
+        } else if (activeTab === 'gamer-browse') {
+          const filteredStations = selectedGameFilter === 'All'
+            ? state.stations
+            : state.stations.filter(s => s.games.includes(selectedGameFilter));
+
+          container.innerHTML = `
+            <div class="space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 class="font-display text-xl font-bold text-white">1. CHOOSE YOUR GAME</h2>
+                    <p class="text-xs text-slate-400">Tap any game card to filter compatible PC, PS5, Racing Sim, or VR rigs.</p>
+                  </div>
+                  ${selectedGameFilter !== 'All' ? `<button type="button" onclick="setGameFilter('All')" class="text-xs text-cyan-400 underline">Show All Games</button>` : ''}
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  ${GAME_CATALOG.map(g => {
+                    const active = selectedGameFilter === g.title;
+                    return `
+                      <button type="button" onclick="setGameFilter('${active ? 'All' : g.title}')" class="glass-card rounded-xl overflow-hidden text-left group ${active ? 'ring-2 ring-cyan-400 border-cyan-400' : ''}">
+                        <img src="${g.img}" alt="${g.title}" class="w-full h-24 object-cover group-hover:scale-105 transition" />
+                        <div class="p-2.5">
+                          <div class="font-bold text-xs text-white truncate">${g.title}</div>
+                          <div class="text-[10px] font-mono-code text-violet-400 mt-0.5">${g.zone}</div>
+                        </div>
+                      </button>`;
+                  }).join('')}
+                </div>
+              </div>
+
+              <div>
+                <h2 class="font-display text-xl font-bold text-white mb-3">2. SELECT AVAILABLE STATION ${selectedGameFilter !== 'All' ? `FOR ${selectedGameFilter.toUpperCase()}` : ''}</h2>
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  ${filteredStations.map(s => `
+                    <div class="glass-card p-5 rounded-xl flex flex-col justify-between">
+                      <div>
+                        <div class="flex justify-between items-center mb-2">
+                          <span class="text-xs font-mono-code text-cyan-400 font-bold">${s.id} • ${s.zone}</span>
+                          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${s.status === 'Available' ? 'bg-emerald-500/15 text-emerald-400' : s.status === 'Occupied' ? 'bg-violet-500/15 text-violet-300' : 'bg-rose-500/15 text-rose-400'}">${s.status}</span>
+                        </div>
+                        <h3 class="font-display font-bold text-white text-lg">${s.name}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">${s.specs}</p>
+                        <div class="flex flex-wrap gap-1.5 mt-3">
+                          ${s.games.map(g => `<span class="text-[10px] font-mono-code px-2 py-0.5 rounded bg-[#070812] border border-slate-800 text-slate-300">${g}</span>`).join('')}
+                        </div>
+                      </div>
+                      <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                        <span class="font-display font-bold text-white text-base">₹${s.rate}<span class="text-xs font-sans font-normal text-slate-500">/hr</span></span>
+                        ${s.status === 'Available'
+                          ? `<button type="button" onclick="openBookModal('${s.id}', '${selectedGameFilter !== 'All' ? selectedGameFilter : s.games[0]}')" class="px-4 py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">Book Rig</button>`
+                          : `<span class="text-xs text-slate-500">${s.status}</span>`}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>`;
+        } else {
+          container.innerHTML = `
+            <div class="space-y-6">
+              <h2 class="font-display text-xl font-bold text-white">ACTIVE SESSION &amp; PAYMENT</h2>
+              ${mySessions.length ? mySessions.map(s => `
+                <div class="glass-card rounded-2xl overflow-hidden grid md:grid-cols-12 border-violet-500/35">
+                  <img src="${getGameImg(s.game)}" alt="${s.game}" class="md:col-span-4 w-full h-44 object-cover" />
+                  <div class="md:col-span-8 p-5 flex flex-col justify-between gap-4">
+                    <div class="flex flex-wrap justify-between items-start gap-2">
+                      <div>
+                        <div class="text-xs font-mono-code text-cyan-400">${s.stationId} • ${s.stationName}</div>
+                        <h3 class="font-display font-bold text-xl text-white">Playing: ${s.game}</h3>
+                        <p class="text-xs text-slate-400 mt-1">Playtime: ${s.hours} hr (₹${s.rate * s.hours}) + Snacks: ₹${s.foodCost} = <strong class="text-white">₹${s.rate * s.hours + s.foodCost}</strong></p>
+                      </div>
+                      <span id="timer-${s.id}" class="px-3.5 py-2 rounded-xl bg-[#070812] border border-emerald-500/40 text-emerald-400 font-mono-code text-base font-bold">${fmtTime(s.remainingSec)}</span>
+                    </div>
+
+                    ${s.paymentPending ? `
+                      <div class="p-3 rounded-xl bg-violet-500/15 border border-violet-500/40 text-xs text-violet-200">
+                        ⏳ <strong>Payment Submitted!</strong> Waiting for Desk Operator or Manager to approve &amp; issue your receipt.
+                      </div>
+                    ` : `
+                      <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="extendSession('${s.id}')" class="px-3.5 py-2 rounded-xl border border-slate-700 hover:border-cyan-400 text-xs font-semibold text-slate-200">+1 Hr</button>
+                        <button type="button" onclick="openSnackModal('${s.id}')" class="px-3.5 py-2 rounded-xl bg-slate-900 border border-violet-500/40 hover:bg-slate-800 text-violet-300 text-xs font-bold">+ Order Snacks</button>
+                        <button type="button" onclick="openPaymentModal('${s.id}')" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase">End Session &amp; Pay</button>
+                      </div>
+                    `}
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="glass-card p-10 rounded-2xl text-center space-y-3">
+                  <p class="text-sm text-slate-400">No active session right now.</p>
+                  <button type="button" onclick="switchTab('gamer-browse')" class="px-5 py-2.5 btn-neon font-display font-bold text-xs uppercase rounded-xl">Pick a Game &amp; Book Rig →</button>
+                </div>`}
+            </div>`;
+        }
+      }
+
+      // ==================== DESK OPERATOR VIEWS ====================
+      else if (currentUser.role === 'desk') {
+        if (activeTab === 'desk-timers') {
+          container.innerHTML = `
+            <div class="space-y-6">
+              ${state.pendingPayments.length ? `
+                <div class="space-y-3">
+                  <h2 class="font-display text-lg font-bold text-cyan-400">⏳ PENDING PAYMENT APPROVALS (${state.pendingPayments.length})</h2>
+                  <div class="grid md:grid-cols-2 gap-4">
+                    ${state.pendingPayments.map(p => `
+                      <div class="glass-card p-5 rounded-xl border-cyan-500/40 space-y-3">
+                        <div class="flex justify-between items-start">
+                          <div>
+                            <span class="font-mono-code text-xs text-cyan-400 font-bold">${p.payId} • ${p.stationName}</span>
+                            <h3 class="font-bold text-white text-base">${p.gamer} — ${p.game}</h3>
+                            <p class="text-xs text-slate-400">Method: <strong class="text-slate-200">${p.payMethod}</strong> (${p.txnRef})</p>
+                          </div>
+                          <div class="font-display text-2xl font-bold text-emerald-400">₹${p.total}</div>
+                        </div>
+                        <div class="flex gap-2">
+                          <button type="button" onclick="approveOrRejectPayment('${p.payId}', true)" class="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase rounded-xl">Approve &amp; Issue Bill</button>
+                          <button type="button" onclick="approveOrRejectPayment('${p.payId}', false)" class="px-4 py-2 bg-rose-950 border border-rose-500/40 text-rose-300 font-display font-bold text-xs uppercase rounded-xl">Reject</button>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <h2 class="font-display text-lg font-bold text-white">LIVE STATION TIMERS (${state.sessions.length})</h2>
+                  <button type="button" onclick="switchTab('desk-walkin')" class="px-4 py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">+ Walk-In Booking</button>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  ${state.sessions.length ? state.sessions.map(s => `
+                    <div class="glass-card p-5 rounded-xl space-y-4">
+                      <div class="flex justify-between items-start">
+                        <div>
+                          <div class="text-xs font-mono-code text-cyan-400 font-bold">${s.stationId} • ${s.game}</div>
+                          <h3 class="font-display font-bold text-white text-base">${s.gamer}</h3>
+                        </div>
+                        <span id="timer-${s.id}" class="px-2.5 py-1 rounded-lg bg-[#070812] border border-emerald-500/40 text-emerald-400 font-mono-code text-sm font-bold">${fmtTime(s.remainingSec)}</span>
+                      </div>
+                      <div class="bg-[#070812] p-3 rounded-xl text-xs space-y-1 border border-slate-800">
+                        <div class="flex justify-between text-slate-400"><span>Playtime (${s.hours} hr × ₹${s.rate}):</span><span class="text-white font-mono-code">₹${s.rate * s.hours}</span></div>
+                        <div class="flex justify-between text-slate-400"><span>Cafe Snacks:</span><span class="text-cyan-300 font-mono-code">₹${s.foodCost}</span></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1 font-bold text-white"><span>Total Due:</span><span class="text-emerald-400 font-mono-code">₹${s.rate * s.hours + s.foodCost}</span></div>
+                      </div>
+                      ${s.paymentPending
+                        ? `<div class="text-center text-xs text-cyan-300 bg-cyan-500/10 py-2 rounded-lg border border-cyan-500/30">Payment submitted — approve above</div>`
+                        : `<div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="extendSession('${s.id}')" class="py-2 text-xs font-mono-code border border-slate-700 hover:border-cyan-400 rounded-lg text-slate-200">+1 Hr</button>
+                            <button type="button" onclick="openSnackModal('${s.id}')" class="py-2 text-xs font-mono-code border border-violet-500/40 text-violet-300 rounded-lg">+ Snack</button>
+                            <button type="button" onclick="openPaymentModal('${s.id}')" class="py-2 text-xs font-display font-bold bg-emerald-500 text-slate-950 rounded-lg">Collect Bill</button>
+                          </div>`}
+                    </div>
+                  `).join('') : `
+                    <div class="col-span-3 glass-card p-10 rounded-xl text-center space-y-3">
+                      <p class="text-sm text-slate-400">No active sessions right now.</p>
+                      <button type="button" onclick="switchTab('desk-walkin')" class="px-4 py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">Assign Walk-In Gamer →</button>
+                    </div>`}
+                </div>
+              </div>
+            </div>`;
+        } else if (activeTab === 'desk-walkin') {
+          container.innerHTML = `
+            <div class="space-y-4">
+              <h2 class="font-display text-xl font-bold text-white">WALK-IN STATION BOOKING</h2>
+              <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${state.stations.map(s => `
+                  <div class="glass-card p-5 rounded-xl flex flex-col justify-between">
+                    <div>
+                      <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-mono-code text-cyan-400">${s.id}</span>
+                        <span class="text-[11px] font-bold ${s.status === 'Available' ? 'text-emerald-400' : 'text-rose-400'}">${s.status}</span>
+                      </div>
+                      <h3 class="font-display font-bold text-lg text-white">${s.name}</h3>
+                      <p class="text-xs text-slate-400 mt-1">${s.specs} • ₹${s.rate}/hr</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-800 flex justify-end">
+                      ${s.status === 'Available'
+                        ? `<button type="button" onclick="openBookModal('${s.id}', '${s.games[0]}')" class="px-4 py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">Assign Gamer</button>`
+                        : `<span class="text-xs text-slate-500">Unavailable</span>`}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>`;
+        } else if (activeTab === 'desk-report') {
+          const activeRigs = state.stations.filter(s => s.status !== 'Maintenance');
+          container.innerHTML = `
+            <div class="max-w-lg glass-card p-6 rounded-2xl space-y-4">
+              <h2 class="font-display text-lg font-bold text-rose-400">REPORT FAULTY HARDWARE (STAGE 1)</h2>
+              <p class="text-xs text-slate-400">Locks the station immediately and sends a ticket to the Hardware Technician.</p>
+              <form onsubmit="submitDeskFaultReport(event)" class="space-y-3 text-xs">
+                <div>
+                  <label class="block font-mono-code text-slate-400 mb-1">SELECT STATION</label>
+                  <select id="faultStationId" class="w-full px-3 py-2.5 bg-[#070812] border border-slate-700 rounded-xl text-white">
+                    ${activeRigs.map(s => `<option value="${s.id}">${s.id} — ${s.name} (${s.status})</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-mono-code text-slate-400 mb-1">HARDWARE ISSUE</label>
+                  <input id="faultDesc" type="text" required placeholder="e.g. Controller stick drift / Monitor flicker" class="w-full px-3 py-2.5 bg-[#070812] border border-slate-700 rounded-xl text-white" />
+                </div>
+                <button type="submit" class="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-display font-bold text-xs uppercase rounded-xl">Lock Station &amp; Send to Tech</button>
+              </form>
+            </div>`;
+        }
+      }
+
+      // ==================== HARDWARE TECHNICIAN VIEW ====================
+      else if (currentUser.role === 'tech') {
+        container.innerHTML = `
+          <div class="space-y-4">
+            <div>
+              <h2 class="font-display text-xl font-bold text-white">HARDWARE TECHNICIAN REPAIR QUEUE</h2>
+              <p class="text-xs text-slate-400">Diagnose reported stations, submit repair cost estimates to the Manager, and unlock rigs once approved.</p>
+            </div>
+            ${state.tickets.length ? state.tickets.map(t => `
+              <div class="glass-card p-5 rounded-xl space-y-3">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                  <div>
+                    <span class="font-mono-code text-xs text-cyan-400 font-bold">${t.id} • ${t.stationName} (${t.stationId})</span>
+                    <h3 class="font-bold text-white text-sm mt-0.5">${t.issue}</h3>
+                    <p class="text-xs text-slate-400">Reported by: ${t.reportedBy}</p>
+                  </div>
+                  <span class="px-3 py-1 rounded-full text-[11px] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/30">${t.stage}</span>
+                </div>
+
+                ${(t.stage === 'Awaiting Tech Diagnosis' || t.stage === 'Rejected by Manager') ? `
+                  <div class="grid sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-xs">
+                    <input id="notes-${t.id}" type="text" placeholder="Diagnosis & parts needed" value="${t.techNotes}" class="px-3 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white" />
+                    <input id="cost-${t.id}" type="number" placeholder="Est. Cost (₹)" value="${t.cost || 750}" class="px-3 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white font-mono-code" />
+                    <button type="button" onclick="submitTechEstimate('${t.id}')" class="py-2 btn-neon font-display font-bold text-xs uppercase rounded-xl">Send Estimate to Manager</button>
+                  </div>
+                ` : t.stage === 'Approved - Ready for Repair' ? `
+                  <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+                    <span class="text-emerald-400">Manager approved ₹${t.cost} (${t.techNotes})</span>
+                    <button type="button" onclick="completeTechRepair('${t.id}')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase rounded-xl">Mark Fixed &amp; Unlock Rig</button>
+                  </div>
+                ` : `
+                  <div class="text-xs text-slate-400 pt-2 border-t border-slate-800">
+                    Diagnosis: ${t.techNotes || 'Pending'} • Cost: ₹${t.cost}
+                  </div>
+                `}
+              </div>
+            `).join('') : `
+              <div class="glass-card p-8 rounded-xl text-center text-xs text-slate-400">
+                No hardware maintenance tickets right now.
+              </div>`}
+          </div>`;
+      }
+
+      // ==================== CAFE MANAGER (ADMIN) VIEWS ====================
+      else if (currentUser.role === 'manager') {
+        if (activeTab === 'mgr-overview') {
+          const avail = state.stations.filter(s => s.status === 'Available').length;
+          const pendingRepairs = state.tickets.filter(t => t.stage === 'Pending Manager Approval');
+
+          container.innerHTML = `
+            <div class="space-y-6">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-emerald-400">
+                  <div class="text-xs text-slate-400">Available Rigs</div>
+                  <div class="font-display text-2xl font-bold text-emerald-400 mt-1">${avail} / ${state.stations.length}</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-cyan-400">
+                  <div class="text-xs text-slate-400">Active Sessions</div>
+                  <div class="font-display text-2xl font-bold text-cyan-400 mt-1">${state.sessions.length}</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-fuchsia-400">
+                  <div class="text-xs text-slate-400">Pending Approvals</div>
+                  <div class="font-display text-2xl font-bold text-fuchsia-400 mt-1">${state.pendingPayments.length + pendingRepairs.length}</div>
+                </div>
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-violet-400">
+                  <div class="text-xs text-slate-400">Approved Revenue</div>
+                  <div class="font-display text-2xl font-bold text-white mt-1">₹${state.totalRevenue}</div>
+                </div>
+              </div>
+
+              <!-- 1. Pending Payment Approvals -->
+              <div class="space-y-3">
+                <h2 class="font-display text-lg font-bold text-cyan-400">ONLINE &amp; CASH PAYMENT APPROVALS (${state.pendingPayments.length})</h2>
+                ${state.pendingPayments.length ? state.pendingPayments.map(p => `
+                  <div class="glass-card p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-cyan-500/35">
+                    <div class="text-xs space-y-1">
+                      <div class="font-mono-code text-cyan-400 font-bold">${p.payId} • ${p.stationName} (${p.game})</div>
+                      <div class="text-sm font-bold text-white">Gamer: ${p.gamer} — <span class="text-emerald-400">₹${p.total}</span></div>
+                      <div class="text-slate-400">Payment Mode: <strong class="text-slate-200">${p.payMethod}</strong> • Ref: <span class="font-mono-code">${p.txnRef}</span></div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button type="button" onclick="approveOrRejectPayment('${p.payId}', true)" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase rounded-xl">Approve Payment</button>
+                      <button type="button" onclick="approveOrRejectPayment('${p.payId}', false)" class="px-4 py-2 bg-rose-950 border border-rose-500/40 text-rose-300 font-display font-bold text-xs uppercase rounded-xl">Reject</button>
+                    </div>
+                  </div>
+                `).join('') : '<div class="glass-card p-5 rounded-xl text-xs text-slate-400">No payments awaiting approval.</div>'}
+              </div>
+
+              <!-- 2. Active Sessions -->
+              <div class="space-y-3">
+                <h2 class="font-display text-lg font-bold text-white">ACTIVE ARENA SESSIONS (${state.sessions.length})</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  ${state.sessions.length ? state.sessions.map(s => `
+                    <div class="glass-card p-4 rounded-xl flex items-center justify-between gap-3">
+                      <div class="flex items-center gap-3">
+                        <img src="${getGameImg(s.game)}" alt="${s.game}" class="w-14 h-12 rounded-lg object-cover shrink-0" />
+                        <div>
+                          <div class="font-mono-code text-xs text-cyan-400 font-bold">${s.stationId} • ${s.gamer}</div>
+                          <div class="text-sm font-bold text-white">${s.game}</div>
+                          <div class="text-xs text-slate-400">Bill: ₹${s.rate * s.hours + s.foodCost} ${s.paymentPending ? '(Payment Pending)' : ''}</div>
+                        </div>
+                      </div>
+                      <span id="timer-${s.id}" class="font-mono-code text-xs font-bold text-emerald-400 bg-[#070812] px-2.5 py-1.5 rounded-lg border border-slate-800">${fmtTime(s.remainingSec)}</span>
+                    </div>
+                  `).join('') : '<div class="col-span-3 glass-card p-5 rounded-xl text-xs text-slate-400">No active sessions running across the arena.</div>'}
+                </div>
+              </div>
+
+              <!-- 3. Hardware Repair Budget Approvals -->
+              <div class="space-y-3">
+                <h2 class="font-display text-lg font-bold text-white">HARDWARE REPAIR BUDGET APPROVALS (${pendingRepairs.length})</h2>
+                ${pendingRepairs.length ? pendingRepairs.map(t => `
+                  <div class="glass-card p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="text-xs space-y-1">
+                      <div class="font-mono-code text-violet-400 font-bold">${t.id} • ${t.stationName}</div>
+                      <div class="text-sm font-bold text-white">${t.issue}</div>
+                      <div class="text-slate-400">Tech Diagnosis: ${t.techNotes} • <strong class="text-cyan-300">Requested Budget: ₹${t.cost}</strong></div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button type="button" onclick="managerReviewTicket('${t.id}', true)" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs uppercase rounded-xl">Approve Budget</button>
+                      <button type="button" onclick="managerReviewTicket('${t.id}', false)" class="px-4 py-2 bg-rose-950 border border-rose-500/40 text-rose-300 font-display font-bold text-xs uppercase rounded-xl">Reject</button>
+                    </div>
+                  </div>
+                `).join('') : '<div class="glass-card p-5 rounded-xl text-xs text-slate-400">No repair budgets awaiting approval.</div>'}
+              </div>
+            </div>`;
+        } else if (activeTab === 'mgr-rigs') {
+          const gamers = state.users.filter(u => u.role === 'gamer');
+          container.innerHTML = `
+            <div class="space-y-6">
+              <div class="grid lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-4 glass-card p-5 rounded-xl space-y-3 h-fit">
+                  <h3 class="font-display text-sm font-bold text-cyan-400">ADD NEW GAMING STATION</h3>
+                  <form onsubmit="addNewStation(event)" class="space-y-3 text-xs">
+                    <div>
+                      <label class="block text-slate-400 mb-1">Station Name</label>
+                      <input id="newRigName" type="text" required placeholder="e.g. RTX Ultra 04" class="w-full px-3 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white" />
+                    </div>
+                    <div>
+                      <label class="block text-slate-400 mb-1">Zone</label>
+                      <select id="newRigZone" class="w-full px-3 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white">
+                        <option>PC Zone</option>
+                        <option>PS5 Lounge</option>
+                        <option>Racing Sim</option>
+                        <option>VR Booth</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-slate-400 mb-1">Hourly Rate (₹)</label>
+                      <input id="newRigRate" type="number" value="180" required class="w-full px-3 py-2 bg-[#070812] border border-slate-700 rounded-xl text-white font-mono-code" />
+                    </div>
+                    <button type="submit" class="w-full py-2.5 btn-neon font-display font-bold text-xs uppercase rounded-xl">+ Add Station</button>
+                  </form>
+                  <button type="button" onclick="resetSystem()" class="w-full py-2 border border-rose-500/40 text-rose-400 text-xs rounded-xl hover:bg-rose-950/30">Reset All Arena Data</button>
+                </div>
+                <div class="lg:col-span-8 glass-card rounded-xl overflow-hidden">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-[#070812] text-slate-400 font-mono-code uppercase">
+                      <tr><th class="px-4 py-3">ID</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Zone</th><th class="px-4 py-3">Rate</th><th class="px-4 py-3">Status</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                      ${state.stations.map(s => `
+                        <tr>
+                          <td class="px-4 py-3 font-mono-code text-cyan-400">${s.id}</td>
+                          <td class="px-4 py-3 font-semibold text-white">${s.name}</td>
+                          <td class="px-4 py-3 text-slate-400">${s.zone}</td>
+                          <td class="px-4 py-3 font-mono-code text-white">₹${s.rate}/hr</td>
+                          <td class="px-4 py-3 text-emerald-400">${s.status}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="glass-card rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 font-display text-sm font-bold text-white">REGISTERED GAMER ACCOUNTS (${gamers.length})</div>
+                <div class="divide-y divide-slate-800 text-xs">
+                  ${gamers.length ? gamers.map(g => `
+                    <div class="p-3.5 flex justify-between items-center">
+                      <div><strong class="text-white">${g.name}</strong> <span class="font-mono-code text-cyan-400">(@${g.id})</span> • <span class="text-slate-400">${g.email}</span></div>
+                      <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-semibold">Active</span>
+                    </div>
+                  `).join('') : '<div class="p-4 text-slate-500">No gamer accounts registered yet.</div>'}
+                </div>
+              </div>
+            </div>`;
+        } else if (activeTab === 'mgr-logs') {
+          const allInvs = Object.values(state.invoices);
+          container.innerHTML = `
+            <div class="grid lg:grid-cols-2 gap-6">
+              <div class="glass-card rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 font-display text-sm font-bold text-cyan-400">APPROVED RECEIPTS (${allInvs.length})</div>
+                <div class="divide-y divide-slate-800 text-xs">
+                  ${allInvs.map(inv => `
+                    <div class="p-3.5 flex justify-between items-center gap-3">
+                      <div>
+                        <span class="font-mono-code text-cyan-400 font-bold">${inv.id}</span> • <span class="text-white font-semibold">${inv.gamer}</span>
+                        <div class="text-slate-400">${inv.station} (${inv.game}) — ₹${inv.total}</div>
+                      </div>
+                      <button type="button" onclick="openInvoiceById('${inv.id}')" class="px-3 py-1.5 bg-slate-900 border border-slate-700 hover:border-cyan-400 rounded-lg text-white">Receipt</button>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              <div class="glass-card rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-slate-800 font-display text-sm font-bold text-violet-400">SYSTEM AUDIT LOGS</div>
+                <div class="divide-y divide-slate-800 text-xs max-h-96 overflow-y-auto">
+                  ${state.auditLogs.map(l => `
+                    <div class="p-3.5 flex justify-between gap-4">
+                      <div><strong class="text-cyan-300">${l.actor}:</strong> <span class="text-slate-300">${l.action}</span></div>
+                      <span class="font-mono-code text-slate-500 shrink-0">${l.time}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>`;
+        }
+      }
+    }
+
+    function setGameFilter(game) {
+      selectedGameFilter = game;
+      renderWorkspace();
+    }
+
+    function quickPlayAgain(gameTitle) {
+      selectedGameFilter = gameTitle;
+      switchTab('gamer-browse');
+    }
+
+    setInterval(() => {
+      state.sessions.forEach(s => {
+        if (s.remainingSec > 0) {
+          s.remainingSec--;
+          const el = document.getElementById('timer-' + s.id);
+          if (el) el.textContent = fmtTime(s.remainingSec);
+        }
+      });
+    }, 1000);
+
+    initBackgroundSync();
+  </script>
+</body>
+</html>
